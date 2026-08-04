@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, ChevronLeft, Dumbbell, Sparkles, GripVertical, X } from "lucide-react";
+import { Plus, Trash2, ChevronLeft, Dumbbell, Sparkles, GripVertical, X, RefreshCw } from "lucide-react";
 import { getGoalLabel, getDifficultyLabel } from "@/lib/utils";
 import type { ExerciseWithRelations } from "@/types";
 
@@ -67,7 +67,10 @@ export function NewProgramClient({ muscleGroups, equipment, exercises }: Props) 
   const [generatedDays, setGeneratedDays] = useState<ProgramDay[]>([]);
 
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [mode, setMode] = useState<"manual" | "generate">("manual");
+  const [replaceIndex, setReplaceIndex] = useState<number | null>(null);
+  const [replaceSearch, setReplaceSearch] = useState("");
 
   const filteredExercises = exercises.filter((ex) => {
     const matchSearch =
@@ -174,6 +177,22 @@ export function NewProgramClient({ muscleGroups, equipment, exercises }: Props) 
     }
   }
 
+  function updateGeneratedExercise(exIndex: number, field: keyof DayExercise, value: string | number) {
+    setGeneratedDays((prev) =>
+      prev.map((d, i) =>
+        i === 0
+          ? { ...d, exercises: d.exercises.map((ex, j) => j === exIndex ? { ...ex, [field]: value } : ex) }
+          : d
+      )
+    );
+  }
+
+  function removeGeneratedExercise(exIndex: number) {
+    setGeneratedDays((prev) =>
+      prev.map((d, i) => i === 0 ? { ...d, exercises: d.exercises.filter((_, j) => j !== exIndex) } : d)
+    );
+  }
+
   function useGeneratedDays() {
     setDays(generatedDays.map((d, i) => ({ ...d, dayNumber: i + 1 })));
     setMode("manual");
@@ -183,15 +202,29 @@ export function NewProgramClient({ muscleGroups, equipment, exercises }: Props) 
   async function save() {
     if (!name.trim()) return;
     setSaving(true);
+    setSaveError(null);
     try {
       const res = await fetch("/api/programs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, description, goal, days }),
+        body: JSON.stringify({
+          name,
+          description,
+          goal,
+          days: days.map((day) => ({
+            ...day,
+            exercises: day.exercises.map((ex, order) => ({ ...ex, order })),
+          })),
+        }),
       });
       if (res.ok) {
         router.push("/programs");
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setSaveError(data.error ?? "Errore durante il salvataggio");
       }
+    } catch {
+      setSaveError("Errore di rete, riprova");
     } finally {
       setSaving(false);
     }
@@ -352,20 +385,106 @@ export function NewProgramClient({ muscleGroups, equipment, exercises }: Props) 
               <p className="text-sm font-semibold text-zinc-300">Scheda generata:</p>
               {generatedDays[0].exercises.map((ex, i) => (
                 <Card key={i}>
-                  <CardContent className="p-3">
-                    <div className="flex justify-between items-center">
-                      <p className="font-medium text-sm">{ex.exerciseName}</p>
-                      <Badge variant="secondary">{ex.sets}x{ex.reps}</Badge>
+                  <CardContent className="p-3 space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-medium text-sm flex-1 min-w-0 truncate">{ex.exerciseName}</p>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          onClick={() => { setReplaceIndex(i); setReplaceSearch(""); }}
+                          className="rounded-lg p-1.5 text-zinc-400 hover:text-orange-400 hover:bg-orange-500/10 transition-colors"
+                          title="Sostituisci esercizio"
+                        >
+                          <RefreshCw className="h-3.5 w-3.5" />
+                        </button>
+                        <button onClick={() => removeGeneratedExercise(i)} className="rounded-lg p-1.5 text-zinc-500 hover:text-red-400 transition-colors">
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
                     </div>
-                    <p className="text-xs text-zinc-500 mt-1">Recupero: {ex.restSeconds}s</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div>
+                        <label className="text-[10px] text-zinc-500 block mb-1">Serie</label>
+                        <input type="number" value={ex.sets}
+                          onChange={(e) => updateGeneratedExercise(i, "sets", parseInt(e.target.value))}
+                          className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-2 py-1.5 text-sm text-center focus:outline-none focus:border-orange-500"
+                          min={1} max={10} />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-zinc-500 block mb-1">Reps</label>
+                        <input type="text" value={ex.reps}
+                          onChange={(e) => updateGeneratedExercise(i, "reps", e.target.value)}
+                          className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-2 py-1.5 text-sm text-center focus:outline-none focus:border-orange-500" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-zinc-500 block mb-1">Recupero (s)</label>
+                        <input type="number" value={ex.restSeconds}
+                          onChange={(e) => updateGeneratedExercise(i, "restSeconds", parseInt(e.target.value))}
+                          className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-2 py-1.5 text-sm text-center focus:outline-none focus:border-orange-500"
+                          step={15} />
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
               ))}
-              <Button className="w-full" onClick={useGeneratedDays}>
+              <Button className="w-full" onClick={useGeneratedDays} disabled={generatedDays[0].exercises.length === 0}>
                 Usa questa scheda
               </Button>
             </div>
           )}
+
+          {/* Replace exercise picker */}
+          {replaceIndex !== null && (() => {
+            const currentExId = generatedDays[0]?.exercises[replaceIndex]?.exerciseId;
+            const currentEx = exercises.find((e) => e.id === currentExId);
+            const muscleId = currentEx?.primaryMuscle?.id;
+            const filtered = exercises.filter((e) =>
+              e.primaryMuscle?.id === muscleId &&
+              (!replaceSearch || (e.nameIt ?? e.name).toLowerCase().includes(replaceSearch.toLowerCase()))
+            );
+            return (
+              <div className="fixed inset-0 z-50 bg-black/80 flex flex-col justify-end">
+                <div className="bg-zinc-950 rounded-t-2xl flex flex-col" style={{ maxHeight: "70dvh" }}>
+                  <div className="p-4 border-b border-zinc-800 flex items-center justify-between shrink-0">
+                    <div>
+                      <h3 className="font-semibold">Sostituisci esercizio</h3>
+                      {currentEx && <p className="text-xs text-zinc-500 mt-0.5">{currentEx.primaryMuscle.nameIt}</p>}
+                    </div>
+                    <button onClick={() => setReplaceIndex(null)}>
+                      <X className="h-5 w-5 text-zinc-400" />
+                    </button>
+                  </div>
+                  <div className="p-4 shrink-0">
+                    <input type="search" placeholder="Cerca..." value={replaceSearch}
+                      onChange={(e) => setReplaceSearch(e.target.value)}
+                      className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-2.5 text-sm focus:outline-none focus:border-orange-500"
+                      autoFocus />
+                  </div>
+                  <div className="overflow-y-auto flex-1 px-4 pb-safe space-y-2">
+                    {filtered.map((e) => (
+                      <button key={e.id}
+                        onClick={() => {
+                          setGeneratedDays((prev) => prev.map((d, di) => di === 0
+                            ? { ...d, exercises: d.exercises.map((ex, j) => j === replaceIndex
+                                ? { ...ex, exerciseId: e.id, exerciseName: e.nameIt ?? e.name }
+                                : ex) }
+                            : d));
+                          setReplaceIndex(null);
+                        }}
+                        className={`w-full text-left rounded-xl border p-3 transition-colors ${
+                          e.id === currentExId
+                            ? "border-orange-500/50 bg-orange-500/5"
+                            : "border-zinc-800 bg-zinc-900 hover:border-orange-500/50 active:bg-zinc-800"
+                        }`}
+                      >
+                        <p className="font-medium text-sm">{e.nameIt ?? e.name}</p>
+                        <p className="text-zinc-400 text-xs mt-0.5">{e.primaryMuscle.nameIt} · {getDifficultyLabel(e.difficulty)}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           <Button variant="ghost" className="w-full" onClick={() => setStep("meta")}>
             Indietro
@@ -482,6 +601,9 @@ export function NewProgramClient({ muscleGroups, equipment, exercises }: Props) 
           )}
 
           <div className="pt-2 space-y-2">
+            {saveError && (
+              <p className="text-sm text-red-400 text-center">{saveError}</p>
+            )}
             <Button className="w-full" onClick={save} disabled={saving || !name.trim()}>
               {saving ? "Salvataggio..." : "Salva scheda"}
             </Button>
