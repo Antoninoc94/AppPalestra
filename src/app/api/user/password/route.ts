@@ -9,6 +9,10 @@ export async function PATCH(req: NextRequest) {
 
   const { currentPassword, newPassword } = await req.json();
 
+  if (!currentPassword || !newPassword) {
+    return NextResponse.json({ error: "Campi mancanti" }, { status: 400 });
+  }
+
   const user = await prisma.user.findUnique({ where: { id: session.user.id } });
   if (!user) return NextResponse.json({ error: "Utente non trovato" }, { status: 404 });
 

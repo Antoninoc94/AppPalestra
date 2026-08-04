@@ -51,14 +51,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const { id } = await params;
   const body = await req.json();
 
-  const program = await prisma.program.updateMany({
-    where: { id, userId },
-    data: body,
-  });
+  const allowed = ["name", "description", "goal", "isActive"] as const;
+  const data = Object.fromEntries(
+    Object.entries(body).filter(([k]) => allowed.includes(k as typeof allowed[number]))
+  );
 
-  if (program.count === 0) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const existing = await prisma.program.findFirst({ where: { id, userId } });
+  if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  return NextResponse.json({ success: true });
+  const updated = await prisma.program.update({ where: { id }, data });
+
+  return NextResponse.json(updated);
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

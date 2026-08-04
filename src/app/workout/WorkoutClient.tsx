@@ -176,6 +176,7 @@ export function WorkoutClient({ programs, allExercises }: Props) {
         programId: programs.find((p) => p.days.some((d) => d.id === selectedDay?.id))?.id ?? null,
         programDayId: selectedDay?.id ?? null,
         notes: sessionNotes || null,
+        duration: elapsed,
         sets: allSets,
       }),
     });

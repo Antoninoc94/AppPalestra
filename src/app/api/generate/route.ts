@@ -45,9 +45,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Nessun gruppo muscolare trovato" }, { status: 400 });
   }
 
+  const userId = session.user.id;
   const whereClause: Record<string, unknown> = {
     primaryMuscleId: { in: muscleGroupRecords.map((m) => m.id) },
     difficulty: difficulty === "beginner" ? { in: ["beginner"] } : { in: ["beginner", difficulty] },
+    OR: [{ isCustom: false }, { isCustom: true, userId }],
   };
 
   if (equipmentIds && equipmentIds.length > 0) {

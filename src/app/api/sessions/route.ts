@@ -40,6 +40,11 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const { programId, programDayId, notes, duration, sets } = body;
 
+  if (programId) {
+    const program = await prisma.program.findFirst({ where: { id: programId, userId } });
+    if (!program) return NextResponse.json({ error: "Programma non trovato" }, { status: 400 });
+  }
+
   const session = await prisma.workoutSession.create({
     data: {
       userId,

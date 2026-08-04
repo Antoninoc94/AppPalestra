@@ -150,60 +150,55 @@ const exercises = [
 async function main() {
   console.log("🌱 Avvio seed database...");
 
-  await prisma.exerciseEquipment.deleteMany();
-  await prisma.workoutSet.deleteMany();
-  await prisma.workoutSession.deleteMany();
-  await prisma.programExercise.deleteMany();
-  await prisma.programDay.deleteMany();
-  await prisma.program.deleteMany();
-  await prisma.exercise.deleteMany();
-  await prisma.equipment.deleteMany();
-  await prisma.muscleGroup.deleteMany();
-
-  console.log("📦 Inserimento gruppi muscolari...");
-  const muscleMap: Record<string, string> = {};
-  for (const mg of muscleGroups) {
-    const created = await prisma.muscleGroup.create({ data: mg });
-    muscleMap[mg.name] = created.id;
-  }
-
-  console.log("🏋️ Inserimento attrezzature...");
-  const equipmentMap: Record<string, string> = {};
-  for (const eq of equipmentList) {
-    const created = await prisma.equipment.create({ data: eq });
-    equipmentMap[eq.name] = created.id;
-  }
-
-  console.log("💪 Inserimento esercizi...");
-  for (const ex of exercises) {
-    const muscleId = muscleMap[ex.muscle];
-    if (!muscleId) {
-      console.warn(`⚠️ Gruppo muscolare non trovato: ${ex.muscle} per ${ex.name}`);
-      continue;
+  const existingExercises = await prisma.exercise.count();
+  if (existingExercises > 0) {
+    console.log(`ℹ️  Esercizi già presenti (${existingExercises}), salto inserimento.`);
+  } else {
+    console.log("📦 Inserimento gruppi muscolari...");
+    const muscleMap: Record<string, string> = {};
+    for (const mg of muscleGroups) {
+      const created = await prisma.muscleGroup.create({ data: mg });
+      muscleMap[mg.name] = created.id;
     }
 
-    await prisma.exercise.create({
-      data: {
-        name: ex.name,
-        nameIt: ex.nameIt,
-        primaryMuscleId: muscleId,
-        secondaryMuscles: ex.secondary,
-        category: ex.category,
-        difficulty: ex.difficulty,
-        isCustom: false,
-        equipment: {
-          create: ex.equipment
-            .filter((e) => equipmentMap[e])
-            .map((e) => ({
-              equipment: { connect: { id: equipmentMap[e] } },
-            })),
-        },
-      },
-    });
-  }
+    console.log("🏋️ Inserimento attrezzature...");
+    const equipmentMap: Record<string, string> = {};
+    for (const eq of equipmentList) {
+      const created = await prisma.equipment.create({ data: eq });
+      equipmentMap[eq.name] = created.id;
+    }
 
-  const exerciseCount = await prisma.exercise.count();
-  console.log(`✅ ${exerciseCount} esercizi inseriti.`);
+    console.log("💪 Inserimento esercizi...");
+    for (const ex of exercises) {
+      const muscleId = muscleMap[ex.muscle];
+      if (!muscleId) {
+        console.warn(`⚠️ Gruppo muscolare non trovato: ${ex.muscle} per ${ex.name}`);
+        continue;
+      }
+
+      await prisma.exercise.create({
+        data: {
+          name: ex.name,
+          nameIt: ex.nameIt,
+          primaryMuscleId: muscleId,
+          secondaryMuscles: ex.secondary,
+          category: ex.category,
+          difficulty: ex.difficulty,
+          isCustom: false,
+          equipment: {
+            create: ex.equipment
+              .filter((e) => equipmentMap[e])
+              .map((e) => ({
+                equipment: { connect: { id: equipmentMap[e] } },
+              })),
+          },
+        },
+      });
+    }
+
+    const exerciseCount = await prisma.exercise.count();
+    console.log(`✅ ${exerciseCount} esercizi inseriti.`);
+  }
 
   // Admin user (skip if already exists)
   const existing = await prisma.user.findUnique({ where: { username: "admin" } });

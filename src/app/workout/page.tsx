@@ -27,6 +27,7 @@ export default async function WorkoutPage() {
       },
     }),
     prisma.exercise.findMany({
+      where: { OR: [{ isCustom: false }, { isCustom: true, userId }] },
       include: { primaryMuscle: true },
       orderBy: { nameIt: "asc" },
     }),

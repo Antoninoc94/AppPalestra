@@ -90,7 +90,7 @@ export function ProgramDetailClient({ program: initial }: { program: Program }) 
       });
       if (res.ok) {
         const updated = await res.json();
-        setProgram((p) => ({ ...p, isActive: updated.isActive }));
+        setProgram((p) => ({ ...p, isActive: updated.isActive ?? !p.isActive }));
       }
     } finally {
       setLoading(false);

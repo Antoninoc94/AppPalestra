@@ -21,7 +21,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   if (action === "reset") {
-    const tempPassword = `palestra${Math.floor(1000 + Math.random() * 9000)}`;
+    const chars = "abcdefghjkmnpqrstuvwxyz23456789";
+    const tempSuffix = Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+    const tempPassword = `gym_${tempSuffix}`;
     const hashed = await bcrypt.hash(tempPassword, 12);
     await prisma.user.update({ where: { id }, data: { password: hashed } });
     return NextResponse.json({ tempPassword });
