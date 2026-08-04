@@ -5,7 +5,7 @@ import { signOut } from "next-auth/react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { User, Lock, LogOut, Shield, Loader2, Eye, EyeOff } from "lucide-react";
+import { User, Lock, LogOut, Shield, Loader2, Eye, EyeOff, RotateCcw, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 
 export function ProfileClient({ username, role }: { username: string; role: string }) {
@@ -17,6 +17,8 @@ export function ProfileClient({ username, role }: { username: string; role: stri
   const [showCurrentPass, setShowCurrentPass] = useState(false);
   const [showNewPass, setShowNewPass] = useState(false);
   const [showConfirmPass, setShowConfirmPass] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   async function handleChangePassword(e: React.FormEvent) {
     e.preventDefault();
@@ -49,6 +51,20 @@ export function ProfileClient({ username, role }: { username: string; role: stri
       }
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleReset() {
+    setResetting(true);
+    try {
+      const res = await fetch("/api/user/reset", { method: "DELETE" });
+      if (res.ok) {
+        // Pulisci anche il localStorage dell'allenamento in corso
+        try { Object.keys(localStorage).filter(k => k.startsWith("apppalestra-workout-")).forEach(k => localStorage.removeItem(k)); } catch {}
+        window.location.href = "/";
+      }
+    } finally {
+      setResetting(false);
     }
   }
 
@@ -153,6 +169,60 @@ export function ProfileClient({ username, role }: { username: string; role: stri
             </form>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Reset dati */}
+      <div className="space-y-3">
+        <h2 className="text-base font-semibold text-zinc-300 flex items-center gap-2">
+          <RotateCcw className="h-4 w-4" />
+          Zona pericolosa
+        </h2>
+        {showResetConfirm ? (
+          <Card className="border-red-900/50">
+            <CardContent className="p-4 space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="rounded-xl bg-red-500/10 p-2 shrink-0 mt-0.5">
+                  <AlertTriangle className="h-4 w-4 text-red-400" />
+                </div>
+                <div>
+                  <p className="font-semibold text-sm">Sei sicuro?</p>
+                  <p className="text-zinc-400 text-xs mt-1">
+                    Verranno eliminati tutti i tuoi allenamenti, schede e sessioni. L&apos;operazione è irreversibile.
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="flex-1"
+                  onClick={handleReset}
+                  disabled={resetting}
+                >
+                  {resetting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sì, resetta tutto"}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1"
+                  onClick={() => setShowResetConfirm(false)}
+                  disabled={resetting}
+                >
+                  Annulla
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <Button
+            variant="outline"
+            className="w-full gap-2 text-red-400 hover:text-red-300 hover:bg-red-900/20 border-red-900/30"
+            onClick={() => setShowResetConfirm(true)}
+          >
+            <RotateCcw className="h-4 w-4" />
+            Resetta tutti i dati
+          </Button>
+        )}
       </div>
 
       {/* Logout */}
