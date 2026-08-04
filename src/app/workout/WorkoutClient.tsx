@@ -29,7 +29,7 @@ export function WorkoutClient({ programs, allExercises }: Props) {
   const [selectedDay, setSelectedDay] = useState<ProgramDay | null>(null);
   const [logExercises, setLogExercises] = useState<LogExercise[]>([]);
   const [expandedEx, setExpandedEx] = useState<number | null>(0);
-  const [restTimer, setRestTimer] = useState<{ seconds: number; running: boolean } | null>(null);
+  const [restTimer, setRestTimer] = useState<{ seconds: number; running: boolean; expiresAt: number } | null>(null);
   const [sessionNotes, setSessionNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [elapsed, setElapsed] = useState(0);
@@ -60,6 +60,12 @@ export function WorkoutClient({ programs, allExercises }: Props) {
       setElapsed(data.elapsed ?? 0);
       setSessionNotes(data.sessionNotes ?? "");
       setExpandedEx(data.expandedEx ?? 0);
+      if (data.restTimerExpiresAt) {
+        const remaining = Math.ceil((data.restTimerExpiresAt - Date.now()) / 1000);
+        if (remaining > 0) {
+          setRestTimer({ seconds: remaining, running: true, expiresAt: data.restTimerExpiresAt });
+        }
+      }
       setPhase("active");
     } catch {}
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -77,9 +83,10 @@ export function WorkoutClient({ programs, allExercises }: Props) {
         elapsed,
         sessionNotes,
         expandedEx,
+        restTimerExpiresAt: restTimer?.expiresAt ?? null,
       }));
     } catch {}
-  }, [phase, selectedDay, logExercises, elapsed, sessionNotes, expandedEx]);
+  }, [phase, selectedDay, logExercises, elapsed, sessionNotes, expandedEx, restTimer]);
 
   useEffect(() => {
     if (phase === "active") {
@@ -171,7 +178,7 @@ export function WorkoutClient({ programs, allExercises }: Props) {
                 if (j !== setIndex) return s;
                 const nowDone = !s.done;
                 if (nowDone) {
-                  setRestTimer({ seconds: ex.restSeconds, running: true });
+                  setRestTimer({ seconds: ex.restSeconds, running: true, expiresAt: Date.now() + ex.restSeconds * 1000 });
                 } else {
                   if (restRef.current) clearInterval(restRef.current);
                   setRestTimer(null);
