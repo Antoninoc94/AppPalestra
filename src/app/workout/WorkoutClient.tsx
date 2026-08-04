@@ -171,6 +171,16 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
     );
   }
 
+  function removeExercise(exIndex: number) {
+    setLogExercises((prev) => prev.filter((_, i) => i !== exIndex));
+    setExpandedEx((prev) => {
+      if (prev === null) return null;
+      if (prev === exIndex) return null;
+      if (prev > exIndex) return prev - 1;
+      return prev;
+    });
+  }
+
   function toggleSetDone(exIndex: number, setIndex: number) {
     setLogExercises((prev) =>
       prev.map((ex, i) =>
@@ -478,6 +488,16 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
                         rows={2}
                         className="w-full rounded-xl border border-zinc-700 bg-zinc-800/60 px-3 py-2 text-xs text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-orange-500 resize-none"
                       />
+
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full gap-1.5 text-xs text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                        onClick={() => removeExercise(exI)}
+                      >
+                        <X className="h-3 w-3" />
+                        Rimuovi esercizio
+                      </Button>
                     </div>
                   )}
                 </CardContent>
