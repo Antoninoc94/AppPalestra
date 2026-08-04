@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Dumbbell, ChevronRight, Timer } from "lucide-react";
 import { formatDuration } from "@/lib/utils";
 
-const STORAGE_KEY = "apppalestra-workout-v1";
+const storageKey = (userId: string) => `apppalestra-workout-${userId}`;
 
 interface BannerState {
   dayName: string | null;
@@ -17,14 +17,14 @@ interface BannerState {
   restTotal: number;
 }
 
-export function ActiveWorkoutBanner() {
+export function ActiveWorkoutBanner({ userId }: { userId: string }) {
   const [info, setInfo] = useState<BannerState | null>(null);
   const [restRemaining, setRestRemaining] = useState(0);
 
-  // Read workout state from localStorage
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      localStorage.removeItem("apppalestra-workout-v1"); // cleanup old shared key
+      const raw = localStorage.getItem(storageKey(userId));
       if (!raw) return;
       const data = JSON.parse(raw);
       if (data.phase !== "active") return;
@@ -45,7 +45,7 @@ export function ActiveWorkoutBanner() {
         setRestRemaining(rem > 0 ? rem : 0);
       }
     } catch {}
-  }, []);
+  }, [userId]);
 
   // Live countdown for rest timer
   useEffect(() => {
@@ -106,7 +106,6 @@ export function ActiveWorkoutBanner() {
               </div>
               <p className="text-xs text-orange-300/50 pb-0.5">Tocca per gestire</p>
             </div>
-            {/* Progress bar */}
             <div className="h-1.5 rounded-full bg-orange-500/20 overflow-hidden">
               <div
                 className="h-full rounded-full bg-orange-500 transition-all duration-500 ease-linear"

@@ -56,8 +56,8 @@ export default async function HomePage() {
         <p className="text-zinc-400 text-sm">Pronto per allenarti?</p>
       </div>
 
-      {/* Resume active workout banner (client — reads localStorage) */}
-      <ActiveWorkoutBanner />
+      {/* Resume active workout banner (client — reads user-scoped localStorage) */}
+      <ActiveWorkoutBanner userId={session.user.id} />
 
       {/* Active programs quick-start */}
       {activeProgramsList.length > 0 ? (

@@ -21,9 +21,9 @@ interface Props {
   allExercises: Exercise[];
 }
 
-const STORAGE_KEY = "apppalestra-workout-v1";
+const storageKey = (userId: string) => `apppalestra-workout-${userId}`;
 
-export function WorkoutClient({ programs, allExercises }: Props) {
+export function WorkoutClient({ programs, allExercises, userId }: Props & { userId: string }) {
   const router = useRouter();
   const [phase, setPhase] = useState<"select" | "active" | "done">("select");
   const [selectedDay, setSelectedDay] = useState<ProgramDay | null>(null);
@@ -42,13 +42,14 @@ export function WorkoutClient({ programs, allExercises }: Props) {
   const [muscleFilter, setMuscleFilter] = useState("");
 
   function clearWorkoutStorage() {
-    try { localStorage.removeItem(STORAGE_KEY); } catch {}
+    try { localStorage.removeItem(storageKey(userId)); } catch {}
   }
 
   // Restore active workout from localStorage (survives tab changes)
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      localStorage.removeItem("apppalestra-workout-v1"); // cleanup old shared key
+      const raw = localStorage.getItem(storageKey(userId));
       if (!raw) return;
       const data = JSON.parse(raw);
       if (data.phase !== "active") return;
@@ -75,7 +76,7 @@ export function WorkoutClient({ programs, allExercises }: Props) {
   useEffect(() => {
     if (phase !== "active") return;
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      localStorage.setItem(storageKey(userId), JSON.stringify({
         phase,
         selectedDayId: selectedDay?.id ?? null,
         selectedDayName: selectedDay?.name ?? null,

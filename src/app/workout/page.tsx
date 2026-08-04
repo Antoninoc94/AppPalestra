@@ -33,5 +33,5 @@ export default async function WorkoutPage() {
     }),
   ]);
 
-  return <WorkoutClient programs={programs} allExercises={exercises} />;
+  return <WorkoutClient programs={programs} allExercises={exercises} userId={userId} />;
 }
