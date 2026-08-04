@@ -377,14 +377,14 @@ export function WorkoutClient({ programs, allExercises }: Props) {
       {/* Exercise picker */}
       {showExPicker && (
         <div className="fixed inset-0 z-50 bg-black/80 flex flex-col justify-end">
-          <div className="bg-zinc-950 rounded-t-2xl max-h-[80vh] flex flex-col">
-            <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
+          <div className="bg-zinc-950 rounded-t-2xl flex flex-col" style={{ maxHeight: "70dvh" }}>
+            <div className="p-4 border-b border-zinc-800 flex items-center justify-between shrink-0">
               <h3 className="font-semibold">Aggiungi esercizio</h3>
               <button onClick={() => setShowExPicker(false)}>
                 <X className="h-5 w-5 text-zinc-400" />
               </button>
             </div>
-            <div className="p-4">
+            <div className="p-4 shrink-0">
               <input
                 type="search"
                 placeholder="Cerca esercizio..."
@@ -394,7 +394,7 @@ export function WorkoutClient({ programs, allExercises }: Props) {
                 autoFocus
               />
             </div>
-            <div className="overflow-y-auto flex-1 px-4 pb-4 space-y-2">
+            <div className="overflow-y-auto flex-1 px-4 pb-safe space-y-2">
               {filteredFreeEx.map((ex) => (
                 <button
                   key={ex.id}
