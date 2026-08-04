@@ -161,7 +161,9 @@ export function NewProgramClient({ muscleGroups, equipment, exercises }: Props) 
       });
       const data = await res.json();
       const generated: ProgramDay = {
-        name: selectedMuscles.join(" + "),
+        name: selectedMuscles
+          .map((m) => muscleGroups.find((mg) => mg.name === m)?.nameIt ?? m)
+          .join(" + "),
         dayNumber: 1,
         exercises: data.exercises.map((e: { exercise: ExerciseWithRelations; sets: number; reps: string; restSeconds: number }) => ({
           exerciseId: e.exercise.id,
