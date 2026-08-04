@@ -21,6 +21,8 @@ interface Props {
   allExercises: Exercise[];
 }
 
+const STORAGE_KEY = "apppalestra-workout-v1";
+
 export function WorkoutClient({ programs, allExercises }: Props) {
   const router = useRouter();
   const [phase, setPhase] = useState<"select" | "active" | "done">("select");
@@ -38,6 +40,46 @@ export function WorkoutClient({ programs, allExercises }: Props) {
   const [showAbandonConfirm, setShowAbandonConfirm] = useState(false);
   const [noSetsError, setNoSetsError] = useState(false);
   const [muscleFilter, setMuscleFilter] = useState("");
+
+  function clearWorkoutStorage() {
+    try { localStorage.removeItem(STORAGE_KEY); } catch {}
+  }
+
+  // Restore active workout from localStorage (survives tab changes)
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      const data = JSON.parse(raw);
+      if (data.phase !== "active") return;
+      const day = data.selectedDayId
+        ? programs.flatMap((p) => p.days).find((d) => d.id === data.selectedDayId) ?? null
+        : null;
+      setSelectedDay(day);
+      setLogExercises(data.logExercises ?? []);
+      setElapsed(data.elapsed ?? 0);
+      setSessionNotes(data.sessionNotes ?? "");
+      setExpandedEx(data.expandedEx ?? 0);
+      setPhase("active");
+    } catch {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Persist workout state while active
+  useEffect(() => {
+    if (phase !== "active") return;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        phase,
+        selectedDayId: selectedDay?.id ?? null,
+        selectedDayName: selectedDay?.name ?? null,
+        logExercises,
+        elapsed,
+        sessionNotes,
+        expandedEx,
+      }));
+    } catch {}
+  }, [phase, selectedDay, logExercises, elapsed, sessionNotes, expandedEx]);
 
   useEffect(() => {
     if (phase === "active") {
@@ -185,6 +227,7 @@ export function WorkoutClient({ programs, allExercises }: Props) {
       }),
     });
 
+    clearWorkoutStorage();
     setSaving(false);
     setPhase("done");
   }
@@ -465,7 +508,7 @@ export function WorkoutClient({ programs, allExercises }: Props) {
               <Button
                 variant="destructive"
                 className="flex-1"
-                onClick={() => { setShowAbandonConfirm(false); setPhase("select"); setElapsed(0); setSessionNotes(""); }}
+                onClick={() => { clearWorkoutStorage(); setShowAbandonConfirm(false); setPhase("select"); setElapsed(0); setSessionNotes(""); setLogExercises([]); setSelectedDay(null); }}
               >
                 Abbandona
               </Button>

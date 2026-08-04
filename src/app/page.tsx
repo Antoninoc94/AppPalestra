@@ -6,38 +6,43 @@ import { formatDate } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Dumbbell, Flame, Calendar, TrendingUp, Plus } from "lucide-react";
+import { Dumbbell, Flame, Calendar, TrendingUp, Plus, Play, ClipboardList } from "lucide-react";
 import Link from "next/link";
+import { ActiveWorkoutBanner } from "@/components/ActiveWorkoutBanner";
 
 async function getStats(userId: string) {
-  const [totalSessions, lastSession, activePrograms, totalSets] = await Promise.all([
+  const weekAgo = new Date();
+  weekAgo.setDate(weekAgo.getDate() - 7);
+
+  const [totalSessions, lastSession, activeProgramsList, totalSets, sessionsThisWeek] = await Promise.all([
     prisma.workoutSession.count({ where: { userId } }),
     prisma.workoutSession.findFirst({
       where: { userId },
       orderBy: { date: "desc" },
-      include: {
-        programDay: true,
-        _count: { select: { sets: true } },
-      },
+      include: { programDay: true, _count: { select: { sets: true } } },
     }),
-    prisma.program.count({ where: { userId, isActive: true } }),
+    prisma.program.findMany({
+      where: { userId, isActive: true },
+      include: {
+        days: {
+          include: { _count: { select: { exercises: true } } },
+          orderBy: { dayNumber: "asc" },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    }),
     prisma.workoutSet.count({ where: { session: { userId } } }),
+    prisma.workoutSession.count({ where: { userId, date: { gte: weekAgo } } }),
   ]);
 
-  const weekAgo = new Date();
-  weekAgo.setDate(weekAgo.getDate() - 7);
-  const sessionsThisWeek = await prisma.workoutSession.count({
-    where: { userId, date: { gte: weekAgo } },
-  });
-
-  return { totalSessions, lastSession, activePrograms, totalSets, sessionsThisWeek };
+  return { totalSessions, lastSession, activeProgramsList, activePrograms: activeProgramsList.length, totalSets, sessionsThisWeek };
 }
 
 export default async function HomePage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  const { totalSessions, lastSession, activePrograms, totalSets, sessionsThisWeek } =
+  const { totalSessions, lastSession, activeProgramsList, activePrograms, totalSets, sessionsThisWeek } =
     await getStats(session.user.id);
 
   const today = new Date();
@@ -51,27 +56,58 @@ export default async function HomePage() {
         <p className="text-zinc-400 text-sm">Pronto per allenarti?</p>
       </div>
 
-      {/* Start workout CTA */}
-      <Link href="/workout">
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-orange-500 to-orange-700 p-5 shadow-lg shadow-orange-900/30">
-          <div className="relative z-10">
-            <p className="text-orange-100 text-sm font-medium mb-1">Inizia ora</p>
-            <h2 className="text-white text-xl font-bold">Allenamento di oggi</h2>
-            <p className="text-orange-100 text-sm mt-1">
-              {lastSession
-                ? `Ultimo: ${formatDate(lastSession.date)}`
-                : "Nessun allenamento ancora"}
-            </p>
-          </div>
-          <Dumbbell className="absolute right-4 top-4 h-16 w-16 text-orange-400/30" />
-          <div className="mt-4">
-            <span className="inline-flex items-center gap-2 rounded-xl bg-white/20 px-4 py-2 text-sm font-semibold text-white backdrop-blur-sm">
-              <Plus className="h-4 w-4" />
-              Inizia allenamento
-            </span>
-          </div>
+      {/* Resume active workout banner (client — reads localStorage) */}
+      <ActiveWorkoutBanner />
+
+      {/* Active programs quick-start */}
+      {activeProgramsList.length > 0 ? (
+        <div className="space-y-3">
+          <h2 className="text-sm font-semibold text-zinc-400 flex items-center gap-2">
+            <ClipboardList className="h-4 w-4" />
+            Schede attive
+          </h2>
+          {activeProgramsList.map((program) => (
+            <div key={program.id} className="space-y-2">
+              <p className="text-xs text-zinc-500 font-medium pl-1">{program.name}</p>
+              <div className="grid grid-cols-1 gap-2">
+                {program.days.map((day) => (
+                  <Link key={day.id} href="/workout">
+                    <div className="flex items-center justify-between rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3 hover:border-orange-500/40 active:bg-zinc-800 transition-all">
+                      <div>
+                        <p className="font-semibold text-sm">{day.name}</p>
+                        <p className="text-zinc-500 text-xs mt-0.5">{day._count.exercises} esercizi</p>
+                      </div>
+                      <div className="rounded-xl bg-orange-500/10 p-2">
+                        <Play className="h-4 w-4 text-orange-400 fill-current" />
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
-      </Link>
+      ) : (
+        /* Fallback CTA when no active programs */
+        <Link href="/workout">
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-orange-500 to-orange-700 p-5 shadow-lg shadow-orange-900/30">
+            <div className="relative z-10">
+              <p className="text-orange-100 text-sm font-medium mb-1">Inizia ora</p>
+              <h2 className="text-white text-xl font-bold">Allenamento di oggi</h2>
+              <p className="text-orange-100 text-sm mt-1">
+                {lastSession ? `Ultimo: ${formatDate(lastSession.date)}` : "Nessun allenamento ancora"}
+              </p>
+            </div>
+            <Dumbbell className="absolute right-4 top-4 h-16 w-16 text-orange-400/30" />
+            <div className="mt-4">
+              <span className="inline-flex items-center gap-2 rounded-xl bg-white/20 px-4 py-2 text-sm font-semibold text-white backdrop-blur-sm">
+                <Plus className="h-4 w-4" />
+                Allenamento libero
+              </span>
+            </div>
+          </div>
+        </Link>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3">
