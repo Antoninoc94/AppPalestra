@@ -555,8 +555,8 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
 
       {/* Exercise picker modal */}
       {showExPicker && (
-        <div className="fixed inset-0 z-50 bg-black/80 flex flex-col justify-end">
-          <div className="bg-zinc-950 rounded-t-2xl flex flex-col" style={{ maxHeight: "75dvh" }}>
+        <div className="fixed inset-0 z-[60] bg-black/80 flex flex-col justify-end">
+          <div className="bg-zinc-950 rounded-t-2xl flex flex-col" style={{ maxHeight: "85dvh" }}>
             <div className="p-4 border-b border-zinc-800 flex items-center justify-between shrink-0">
               <h3 className="font-semibold">Aggiungi esercizio</h3>
               <button onClick={() => { setShowExPicker(false); setFreeExSearch(""); setMuscleFilter(""); }}>

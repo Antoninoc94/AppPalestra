@@ -446,8 +446,8 @@ export function NewProgramClient({ muscleGroups, equipment, exercises }: Props) 
               (!replaceSearch || (e.nameIt ?? e.name).toLowerCase().includes(replaceSearch.toLowerCase()))
             );
             return (
-              <div className="fixed inset-0 z-50 bg-black/80 flex flex-col justify-end">
-                <div className="bg-zinc-950 rounded-t-2xl flex flex-col" style={{ maxHeight: "70dvh" }}>
+              <div className="fixed inset-0 z-[60] bg-black/80 flex flex-col justify-end">
+                <div className="bg-zinc-950 rounded-t-2xl flex flex-col" style={{ maxHeight: "85dvh" }}>
                   <div className="p-4 border-b border-zinc-800 flex items-center justify-between shrink-0">
                     <div>
                       <h3 className="font-semibold">Sostituisci esercizio</h3>
@@ -638,8 +638,8 @@ export function NewProgramClient({ muscleGroups, equipment, exercises }: Props) 
 
       {/* Exercise picker modal */}
       {showPicker && (
-        <div className="fixed inset-0 z-50 bg-black/80 flex flex-col justify-end">
-          <div className="bg-zinc-950 rounded-t-2xl max-h-[80vh] flex flex-col">
+        <div className="fixed inset-0 z-[60] bg-black/80 flex flex-col justify-end">
+          <div className="bg-zinc-950 rounded-t-2xl flex flex-col" style={{ maxHeight: "85dvh" }}>
             <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
               <h3 className="font-semibold">Scegli esercizio</h3>
               <button onClick={() => setShowPicker(false)}>
