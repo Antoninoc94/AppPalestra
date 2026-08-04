@@ -6,7 +6,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  ArrowLeft, UserPlus, Trash2, RotateCcw, Users, Loader2, Eye, EyeOff
+  ArrowLeft, UserPlus, Trash2, RotateCcw, Users, Loader2, Eye, EyeOff,
+  Upload, Download, CheckCircle2
 } from "lucide-react";
 import Link from "next/link";
 import { formatShortDate } from "@/lib/utils";
@@ -31,6 +32,9 @@ export function AdminClient({ users: initial, currentUserId }: { users: User[]; 
   const [error, setError] = useState("");
   const [resetInfo, setResetInfo] = useState<{ userId: string; tempPassword: string } | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{ updated: number; notFound: number; total: number } | null>(null);
+  const [importError, setImportError] = useState("");
 
   async function createUser(e: React.FormEvent) {
     e.preventDefault();
@@ -87,6 +91,30 @@ export function AdminClient({ users: initial, currentUserId }: { users: User[]; 
     }
   }
 
+  async function importCsv(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    setImportResult(null);
+    setImportError("");
+    try {
+      const text = await file.text();
+      const res = await fetch("/api/exercises/import", {
+        method: "POST",
+        headers: { "Content-Type": "text/plain" },
+        body: text,
+      });
+      const data = await res.json();
+      if (res.ok) setImportResult(data);
+      else setImportError(data.error ?? "Errore importazione");
+    } catch {
+      setImportError("Errore di rete");
+    } finally {
+      setImporting(false);
+      e.target.value = "";
+    }
+  }
+
   return (
     <div className="px-4 py-6 space-y-6 pb-24">
       <div className="flex items-center gap-3">
@@ -101,6 +129,43 @@ export function AdminClient({ users: initial, currentUserId }: { users: User[]; 
           Nuovo
         </Button>
       </div>
+
+      {/* Sezione esercizi */}
+      <Card>
+        <CardContent className="p-4 space-y-3">
+          <p className="font-semibold text-sm">Gestione esercizi</p>
+          <div className="flex gap-2">
+            <a href="/api/exercises/export" download>
+              <Button variant="outline" size="sm" className="gap-2">
+                <Download className="h-4 w-4" />
+                Esporta CSV
+              </Button>
+            </a>
+            <label className="cursor-pointer">
+              <Button variant="outline" size="sm" className="gap-2 pointer-events-none" disabled={importing}>
+                {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                {importing ? "Importando..." : "Importa CSV"}
+              </Button>
+              <input type="file" accept=".csv" className="hidden" onChange={importCsv} disabled={importing} />
+            </label>
+          </div>
+          <p className="text-[11px] text-zinc-500">
+            Il CSV deve avere le colonne: <span className="font-mono text-zinc-400">Nome inglese</span> (obbligatoria),{" "}
+            <span className="font-mono text-zinc-400">Nome italiano</span>,{" "}
+            <span className="font-mono text-zinc-400">Descrizione</span>.
+          </p>
+          {importResult && (
+            <div className="flex items-start gap-2 rounded-lg bg-green-500/10 border border-green-500/20 p-3">
+              <CheckCircle2 className="h-4 w-4 text-green-400 shrink-0 mt-0.5" />
+              <p className="text-sm text-green-300">
+                Importazione completata: <strong>{importResult.updated}</strong> aggiornati,{" "}
+                {importResult.notFound} non trovati su {importResult.total} righe.
+              </p>
+            </div>
+          )}
+          {importError && <p className="text-sm text-red-400">{importError}</p>}
+        </CardContent>
+      </Card>
 
       {/* Create user form */}
       {showForm && (
