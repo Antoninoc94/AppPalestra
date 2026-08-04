@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Dumbbell, ClipboardList, BarChart2, BookOpen } from "lucide-react";
+import { Home, Dumbbell, ClipboardList, BarChart2, BookOpen, UserCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -11,6 +11,7 @@ const navItems = [
   { href: "/programs", icon: ClipboardList, label: "Schede" },
   { href: "/exercises", icon: BookOpen, label: "Esercizi" },
   { href: "/progress", icon: BarChart2, label: "Progressi" },
+  { href: "/profile", icon: UserCircle, label: "Profilo" },
 ];
 
 export function BottomNav() {
@@ -18,7 +19,7 @@ export function BottomNav() {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-zinc-800 bg-zinc-950/95 backdrop-blur-sm">
-      <div className="mx-auto flex max-w-lg items-center justify-around px-2 py-2 pb-safe">
+      <div className="mx-auto flex max-w-lg items-center justify-around px-1 py-2 pb-safe">
         {navItems.map(({ href, icon: Icon, label }) => {
           const isActive = pathname === href || (href !== "/" && pathname.startsWith(href));
           return (
@@ -26,7 +27,7 @@ export function BottomNav() {
               key={href}
               href={href}
               className={cn(
-                "flex min-w-[60px] flex-col items-center gap-1 rounded-xl px-3 py-2 text-xs font-medium transition-all",
+                "flex min-w-[48px] flex-col items-center gap-1 rounded-xl px-2 py-2 text-xs font-medium transition-all",
                 isActive
                   ? "text-orange-400"
                   : "text-zinc-500 hover:text-zinc-300"

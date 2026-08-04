@@ -1,4 +1,6 @@
 export const dynamic = "force-dynamic";
+import { auth } from "@/auth";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { formatDate } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
@@ -7,32 +9,36 @@ import { Button } from "@/components/ui/button";
 import { Dumbbell, Flame, Calendar, TrendingUp, Plus } from "lucide-react";
 import Link from "next/link";
 
-async function getStats() {
+async function getStats(userId: string) {
   const [totalSessions, lastSession, activePrograms, totalSets] = await Promise.all([
-    prisma.workoutSession.count(),
+    prisma.workoutSession.count({ where: { userId } }),
     prisma.workoutSession.findFirst({
+      where: { userId },
       orderBy: { date: "desc" },
       include: {
         programDay: true,
         _count: { select: { sets: true } },
       },
     }),
-    prisma.program.count({ where: { isActive: true } }),
-    prisma.workoutSet.count(),
+    prisma.program.count({ where: { userId, isActive: true } }),
+    prisma.workoutSet.count({ where: { session: { userId } } }),
   ]);
 
   const weekAgo = new Date();
   weekAgo.setDate(weekAgo.getDate() - 7);
   const sessionsThisWeek = await prisma.workoutSession.count({
-    where: { date: { gte: weekAgo } },
+    where: { userId, date: { gte: weekAgo } },
   });
 
   return { totalSessions, lastSession, activePrograms, totalSets, sessionsThisWeek };
 }
 
 export default async function HomePage() {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
+
   const { totalSessions, lastSession, activePrograms, totalSets, sessionsThisWeek } =
-    await getStats();
+    await getStats(session.user.id);
 
   const today = new Date();
 
@@ -41,7 +47,7 @@ export default async function HomePage() {
       {/* Header */}
       <div className="space-y-1">
         <p className="text-zinc-400 text-sm capitalize">{formatDate(today)}</p>
-        <h1 className="text-2xl font-bold">Ciao, Antonino 👋</h1>
+        <h1 className="text-2xl font-bold">Ciao, {session.user.name} 👋</h1>
         <p className="text-zinc-400 text-sm">Pronto per allenarti?</p>
       </div>
 

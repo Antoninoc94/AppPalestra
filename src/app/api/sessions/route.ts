@@ -1,13 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 
+async function getUserId() {
+  const session = await auth();
+  return session?.user?.id ?? null;
+}
+
 export async function GET(req: NextRequest) {
+  const userId = await getUserId();
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const { searchParams } = new URL(req.url);
   const page = parseInt(searchParams.get("page") ?? "1");
   const limit = parseInt(searchParams.get("limit") ?? "10");
 
   const [sessions, total] = await Promise.all([
     prisma.workoutSession.findMany({
+      where: { userId },
       include: {
         program: { select: { id: true, name: true } },
         programDay: { select: { id: true, name: true } },
@@ -17,21 +27,26 @@ export async function GET(req: NextRequest) {
       skip: (page - 1) * limit,
       take: limit,
     }),
-    prisma.workoutSession.count(),
+    prisma.workoutSession.count({ where: { userId } }),
   ]);
 
   return NextResponse.json({ sessions, total, page, limit });
 }
 
 export async function POST(req: NextRequest) {
+  const userId = await getUserId();
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const body = await req.json();
-  const { programId, programDayId, notes, sets } = body;
+  const { programId, programDayId, notes, duration, sets } = body;
 
   const session = await prisma.workoutSession.create({
     data: {
+      userId,
       programId: programId ?? null,
       programDayId: programDayId ?? null,
       notes: notes ?? null,
+      duration: duration ?? null,
       sets: {
         create: sets.map((s: { exerciseId: string; setNumber: number; reps: number; weight?: number; restSeconds?: number; notes?: string }) => ({
           exerciseId: s.exerciseId,

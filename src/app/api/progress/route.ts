@@ -1,21 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(req: NextRequest) {
+  const session = await auth();
+  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const userId = session.user.id;
+
   const { searchParams } = new URL(req.url);
   const exerciseId = searchParams.get("exerciseId");
 
-  if (!exerciseId) {
-    return NextResponse.json({ error: "exerciseId required" }, { status: 400 });
-  }
+  if (!exerciseId) return NextResponse.json({ error: "exerciseId required" }, { status: 400 });
 
   const sets = await prisma.workoutSet.findMany({
-    where: { exerciseId },
+    where: { exerciseId, session: { userId } },
     include: { session: { select: { date: true } } },
     orderBy: { session: { date: "asc" } },
   });
 
-  // Group by date
   const byDate = new Map<string, { maxWeight: number; totalVolume: number }>();
 
   for (const set of sets) {

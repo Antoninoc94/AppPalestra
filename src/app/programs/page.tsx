@@ -1,4 +1,6 @@
 export const dynamic = "force-dynamic";
+import { auth } from "@/auth";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +10,11 @@ import { getGoalLabel, formatShortDate } from "@/lib/utils";
 import Link from "next/link";
 
 export default async function ProgramsPage() {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
+
   const programs = await prisma.program.findMany({
+    where: { userId: session.user.id },
     include: {
       days: {
         include: { _count: { select: { exercises: true } } },

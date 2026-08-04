@@ -1,6 +1,9 @@
 import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+import bcrypt from "bcryptjs";
 
-const prisma = new PrismaClient();
+const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
+const prisma = new PrismaClient({ adapter });
 
 const muscleGroups = [
   { name: "chest", nameIt: "Petto" },
@@ -200,7 +203,21 @@ async function main() {
   }
 
   const exerciseCount = await prisma.exercise.count();
-  console.log(`✅ Seed completato! ${exerciseCount} esercizi inseriti.`);
+  console.log(`✅ ${exerciseCount} esercizi inseriti.`);
+
+  // Admin user (skip if already exists)
+  const existing = await prisma.user.findUnique({ where: { username: "admin" } });
+  if (!existing) {
+    const hashed = await bcrypt.hash("palestra", 12);
+    await prisma.user.create({
+      data: { username: "admin", password: hashed, role: "ADMIN" },
+    });
+    console.log("👤 Admin creato → username: admin / password: palestra");
+  } else {
+    console.log("👤 Admin già esistente, skip.");
+  }
+
+  console.log("✅ Seed completato!");
 }
 
 main()

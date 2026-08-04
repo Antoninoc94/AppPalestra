@@ -1,8 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 
+async function getUserId() {
+  const session = await auth();
+  return session?.user?.id ?? null;
+}
+
 export async function GET() {
+  const userId = await getUserId();
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const programs = await prisma.program.findMany({
+    where: { userId },
     include: {
       days: {
         include: {
@@ -22,6 +32,9 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const userId = await getUserId();
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const body = await req.json();
   const { name, description, goal, days } = body;
 
@@ -30,6 +43,7 @@ export async function POST(req: NextRequest) {
       name,
       description,
       goal,
+      userId,
       days: {
         create: days.map((day: { name: string; dayNumber: number; exercises: Array<{ exerciseId: string; order: number; sets: number; reps: string; restSeconds: number; weight?: number; notes?: string }> }) => ({
           name: day.name,

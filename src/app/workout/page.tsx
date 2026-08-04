@@ -1,11 +1,17 @@
 export const dynamic = "force-dynamic";
+import { auth } from "@/auth";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { WorkoutClient } from "./WorkoutClient";
 
 export default async function WorkoutPage() {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
+  const userId = session.user.id;
+
   const [programs, exercises] = await Promise.all([
     prisma.program.findMany({
-      where: { isActive: true },
+      where: { userId, isActive: true },
       include: {
         days: {
           include: {

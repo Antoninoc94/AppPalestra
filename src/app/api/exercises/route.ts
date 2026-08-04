@@ -1,7 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 
+async function getUserId() {
+  const session = await auth();
+  return session?.user?.id ?? null;
+}
+
 export async function GET(req: NextRequest) {
+  const userId = await getUserId();
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const { searchParams } = new URL(req.url);
   const muscleId = searchParams.get("muscle");
   const equipmentId = searchParams.get("equipment");
@@ -10,18 +19,24 @@ export async function GET(req: NextRequest) {
   const page = parseInt(searchParams.get("page") ?? "1");
   const limit = parseInt(searchParams.get("limit") ?? "20");
 
-  const where: Record<string, unknown> = {};
-  if (muscleId) where.primaryMuscleId = muscleId;
-  if (difficulty) where.difficulty = difficulty;
+  const baseFilter: Record<string, unknown> = {};
+  if (muscleId) baseFilter.primaryMuscleId = muscleId;
+  if (difficulty) baseFilter.difficulty = difficulty;
   if (search) {
-    where.OR = [
+    baseFilter.OR = [
       { name: { contains: search, mode: "insensitive" } },
       { nameIt: { contains: search, mode: "insensitive" } },
     ];
   }
-  if (equipmentId) {
-    where.equipment = { some: { equipmentId } };
-  }
+  if (equipmentId) baseFilter.equipment = { some: { equipmentId } };
+
+  // Global exercises OR user's custom ones
+  const where = {
+    AND: [
+      baseFilter,
+      { OR: [{ isCustom: false }, { isCustom: true, userId }] },
+    ],
+  };
 
   const [exercises, total] = await Promise.all([
     prisma.exercise.findMany({
@@ -41,6 +56,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const userId = await getUserId();
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const body = await req.json();
   const { name, nameIt, description, primaryMuscleId, secondaryMuscles, equipmentIds, category, difficulty } = body;
 
@@ -54,6 +72,7 @@ export async function POST(req: NextRequest) {
       category,
       difficulty,
       isCustom: true,
+      userId,
       equipment: {
         create: (equipmentIds ?? []).map((id: string) => ({
           equipment: { connect: { id } },

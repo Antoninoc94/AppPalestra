@@ -6,6 +6,23 @@ datasource db {
   provider = "postgresql"
 }
 
+enum Role {
+  USER
+  ADMIN
+}
+
+model User {
+  id        String           @id @default(cuid())
+  username  String           @unique
+  password  String
+  role      Role             @default(USER)
+  programs  Program[]
+  sessions  WorkoutSession[]
+  exercises Exercise[]
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+}
+
 model MuscleGroup {
   id        String     @id @default(cuid())
   name      String     @unique
@@ -35,6 +52,8 @@ model Exercise {
   difficulty       String
   imageUrl         String?
   isCustom         Boolean             @default(false)
+  userId           String?
+  user             User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
   programExercises ProgramExercise[]
   workoutSets      WorkoutSet[]
   createdAt        DateTime            @default(now())
@@ -56,6 +75,8 @@ model Program {
   description String?
   goal        String
   isActive    Boolean          @default(true)
+  userId      String
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   days        ProgramDay[]
   sessions    WorkoutSession[]
   createdAt   DateTime         @default(now())
@@ -92,6 +113,8 @@ model ProgramExercise {
 
 model WorkoutSession {
   id           String       @id @default(cuid())
+  userId       String
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   program      Program?     @relation(fields: [programId], references: [id])
   programId    String?
   programDay   ProgramDay?  @relation(fields: [programDayId], references: [id])
