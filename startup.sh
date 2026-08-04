@@ -6,14 +6,26 @@ echo "==> Primo avvio AppPalestra..."
 echo "==> Pull da GitHub..."
 git pull origin main
 
-echo "==> Build e avvio container..."
-docker compose up -d --build
+echo "==> Build immagini..."
+docker compose build
 
-echo "==> Attendo che il migrate sia completato..."
-docker compose wait migrate
+echo "==> Avvio database..."
+docker compose up -d postgres
+
+echo "==> Attendo che il database sia pronto..."
+until docker compose exec postgres pg_isready -U palestra -d apppalestra 2>/dev/null; do
+  echo "   ...aspetto il database..."
+  sleep 3
+done
+
+echo "==> Esecuzione migrate (prisma db push)..."
+docker compose run --rm migrate
 
 echo "==> Esecuzione seed (utente admin + esercizi)..."
-docker compose run --rm migrate npx ts-node --project tsconfig.json prisma/seed.ts
+docker compose run --rm migrate npx prisma db seed
+
+echo "==> Avvio applicazione..."
+docker compose up -d app
 
 echo ""
 echo "==> Installazione completata!"
