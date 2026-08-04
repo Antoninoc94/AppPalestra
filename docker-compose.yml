@@ -19,7 +19,7 @@ services:
     build:
       context: .
       target: builder
-    command: npx prisma migrate deploy
+    command: npx prisma db push
     environment:
       DATABASE_URL: postgresql://palestra:palestra123@postgres:5432/apppalestra
     depends_on:
