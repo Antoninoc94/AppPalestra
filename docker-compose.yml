@@ -9,6 +9,23 @@ services:
       POSTGRES_DB: apppalestra
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U palestra -d apppalestra"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    build:
+      context: .
+      target: builder
+    command: npx prisma migrate deploy
+    environment:
+      DATABASE_URL: postgresql://palestra:palestra123@postgres:5432/apppalestra
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
 
   app:
     build: .
@@ -20,7 +37,8 @@ services:
     ports:
       - "3000:3000"
     depends_on:
-      - postgres
+      migrate:
+        condition: service_completed_successfully
 
 volumes:
   postgres_data:
