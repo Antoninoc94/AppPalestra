@@ -1,0 +1,28 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: apppalestra-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: palestra
+      POSTGRES_PASSWORD: palestra123
+      POSTGRES_DB: apppalestra
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  app:
+    build: .
+    container_name: apppalestra-app
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://palestra:palestra123@postgres:5432/apppalestra
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+
+volumes:
+  postgres_data:

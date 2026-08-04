@@ -1,69 +1,153 @@
-import Image from "next/image";
+export const dynamic = "force-dynamic";
+import { prisma } from "@/lib/prisma";
+import { formatDate } from "@/lib/utils";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Dumbbell, Flame, Calendar, TrendingUp, Plus } from "lucide-react";
+import Link from "next/link";
 
-export default function Home() {
+async function getStats() {
+  const [totalSessions, lastSession, activePrograms, totalSets] = await Promise.all([
+    prisma.workoutSession.count(),
+    prisma.workoutSession.findFirst({
+      orderBy: { date: "desc" },
+      include: {
+        programDay: true,
+        _count: { select: { sets: true } },
+      },
+    }),
+    prisma.program.count({ where: { isActive: true } }),
+    prisma.workoutSet.count(),
+  ]);
+
+  const weekAgo = new Date();
+  weekAgo.setDate(weekAgo.getDate() - 7);
+  const sessionsThisWeek = await prisma.workoutSession.count({
+    where: { date: { gte: weekAgo } },
+  });
+
+  return { totalSessions, lastSession, activePrograms, totalSets, sessionsThisWeek };
+}
+
+export default async function HomePage() {
+  const { totalSessions, lastSession, activePrograms, totalSets, sessionsThisWeek } =
+    await getStats();
+
+  const today = new Date();
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="px-4 py-6 space-y-6">
+      {/* Header */}
+      <div className="space-y-1">
+        <p className="text-zinc-400 text-sm capitalize">{formatDate(today)}</p>
+        <h1 className="text-2xl font-bold">Ciao, Antonino 👋</h1>
+        <p className="text-zinc-400 text-sm">Pronto per allenarti?</p>
+      </div>
+
+      {/* Start workout CTA */}
+      <Link href="/workout">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-orange-500 to-orange-700 p-5 shadow-lg shadow-orange-900/30">
+          <div className="relative z-10">
+            <p className="text-orange-100 text-sm font-medium mb-1">Inizia ora</p>
+            <h2 className="text-white text-xl font-bold">Allenamento di oggi</h2>
+            <p className="text-orange-100 text-sm mt-1">
+              {lastSession
+                ? `Ultimo: ${formatDate(lastSession.date)}`
+                : "Nessun allenamento ancora"}
+            </p>
+          </div>
+          <Dumbbell className="absolute right-4 top-4 h-16 w-16 text-orange-400/30" />
+          <div className="mt-4">
+            <span className="inline-flex items-center gap-2 rounded-xl bg-white/20 px-4 py-2 text-sm font-semibold text-white backdrop-blur-sm">
+              <Plus className="h-4 w-4" />
+              Inizia allenamento
+            </span>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      </Link>
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 gap-3">
+        <Card>
+          <CardContent className="p-4">
+            <div className="rounded-lg bg-orange-500/10 p-2 w-fit mb-2">
+              <Flame className="h-4 w-4 text-orange-400" />
+            </div>
+            <p className="text-2xl font-bold">{sessionsThisWeek}</p>
+            <p className="text-zinc-400 text-xs mt-0.5">Sessioni questa settimana</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="rounded-lg bg-blue-500/10 p-2 w-fit mb-2">
+              <Calendar className="h-4 w-4 text-blue-400" />
+            </div>
+            <p className="text-2xl font-bold">{totalSessions}</p>
+            <p className="text-zinc-400 text-xs mt-0.5">Sessioni totali</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="rounded-lg bg-purple-500/10 p-2 w-fit mb-2">
+              <Dumbbell className="h-4 w-4 text-purple-400" />
+            </div>
+            <p className="text-2xl font-bold">{totalSets}</p>
+            <p className="text-zinc-400 text-xs mt-0.5">Serie totali completate</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="rounded-lg bg-green-500/10 p-2 w-fit mb-2">
+              <TrendingUp className="h-4 w-4 text-green-400" />
+            </div>
+            <p className="text-2xl font-bold">{activePrograms}</p>
+            <p className="text-zinc-400 text-xs mt-0.5">Schede attive</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Last session */}
+      {lastSession && (
+        <div className="space-y-3">
+          <h2 className="text-base font-semibold text-zinc-300">Ultima sessione</h2>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-semibold">
+                    {lastSession.programDay?.name ?? "Allenamento libero"}
+                  </p>
+                  <p className="text-zinc-400 text-sm">{formatDate(lastSession.date)}</p>
+                </div>
+                <Badge variant="secondary">{lastSession._count.sets} serie</Badge>
+              </div>
+            </CardContent>
+          </Card>
         </div>
-      </main>
+      )}
+
+      {/* Quick links */}
+      <div className="space-y-3">
+        <h2 className="text-base font-semibold text-zinc-300">Accesso rapido</h2>
+        <div className="grid grid-cols-2 gap-3">
+          <Link href="/programs/new">
+            <Button variant="outline" className="w-full h-12 justify-start gap-3">
+              <Plus className="h-4 w-4 text-orange-400" />
+              Nuova scheda
+            </Button>
+          </Link>
+          <Link href="/progress">
+            <Button variant="outline" className="w-full h-12 justify-start gap-3">
+              <TrendingUp className="h-4 w-4 text-green-400" />
+              Progressi
+            </Button>
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }

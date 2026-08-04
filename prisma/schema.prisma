@@ -1,0 +1,119 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model MuscleGroup {
+  id        String     @id @default(cuid())
+  name      String     @unique
+  nameIt    String
+  exercises Exercise[] @relation("PrimaryMuscle")
+  createdAt DateTime   @default(now())
+}
+
+model Equipment {
+  id        String              @id @default(cuid())
+  name      String              @unique
+  nameIt    String
+  exercises ExerciseEquipment[]
+  createdAt DateTime            @default(now())
+}
+
+model Exercise {
+  id               String              @id @default(cuid())
+  name             String
+  nameIt           String?
+  description      String?
+  primaryMuscle    MuscleGroup         @relation("PrimaryMuscle", fields: [primaryMuscleId], references: [id])
+  primaryMuscleId  String
+  secondaryMuscles String[]
+  equipment        ExerciseEquipment[]
+  category         String
+  difficulty       String
+  imageUrl         String?
+  isCustom         Boolean             @default(false)
+  programExercises ProgramExercise[]
+  workoutSets      WorkoutSet[]
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+}
+
+model ExerciseEquipment {
+  exercise    Exercise  @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  exerciseId  String
+  equipment   Equipment @relation(fields: [equipmentId], references: [id])
+  equipmentId String
+
+  @@id([exerciseId, equipmentId])
+}
+
+model Program {
+  id          String           @id @default(cuid())
+  name        String
+  description String?
+  goal        String
+  isActive    Boolean          @default(true)
+  days        ProgramDay[]
+  sessions    WorkoutSession[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+model ProgramDay {
+  id        String            @id @default(cuid())
+  program   Program           @relation(fields: [programId], references: [id], onDelete: Cascade)
+  programId String
+  name      String
+  dayNumber Int
+  exercises ProgramExercise[]
+  sessions  WorkoutSession[]
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+}
+
+model ProgramExercise {
+  id           String     @id @default(cuid())
+  programDay   ProgramDay @relation(fields: [programDayId], references: [id], onDelete: Cascade)
+  programDayId String
+  exercise     Exercise   @relation(fields: [exerciseId], references: [id])
+  exerciseId   String
+  order        Int
+  sets         Int
+  reps         String
+  restSeconds  Int        @default(90)
+  weight       Float?
+  notes        String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
+
+model WorkoutSession {
+  id           String       @id @default(cuid())
+  program      Program?     @relation(fields: [programId], references: [id])
+  programId    String?
+  programDay   ProgramDay?  @relation(fields: [programDayId], references: [id])
+  programDayId String?
+  date         DateTime     @default(now())
+  duration     Int?
+  notes        String?
+  sets         WorkoutSet[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+}
+
+model WorkoutSet {
+  id          String         @id @default(cuid())
+  session     WorkoutSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sessionId   String
+  exercise    Exercise       @relation(fields: [exerciseId], references: [id])
+  exerciseId  String
+  setNumber   Int
+  reps        Int
+  weight      Float?
+  restSeconds Int?
+  notes       String?
+  completedAt DateTime       @default(now())
+}
