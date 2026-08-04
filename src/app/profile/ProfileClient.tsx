@@ -141,7 +141,7 @@ export function ProfileClient({ username, role }: { username: string; role: stri
       <Button
         variant="outline"
         className="w-full gap-2 text-red-400 hover:text-red-300 hover:bg-red-900/20 border-red-900/30"
-        onClick={() => signOut({ callbackUrl: `${window.location.origin}/login` })}
+        onClick={async () => { await signOut({ redirect: false }); window.location.href = "/login"; }}
       >
         <LogOut className="h-4 w-4" />
         Esci
