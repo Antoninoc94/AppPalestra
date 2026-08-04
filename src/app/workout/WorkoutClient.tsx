@@ -31,13 +31,11 @@ export function WorkoutClient({ programs, allExercises }: Props) {
   const [sessionNotes, setSessionNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [elapsed, setElapsed] = useState(0);
-  const [startTime] = useState(() => new Date());
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const restRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [freeExSearch, setFreeExSearch] = useState("");
   const [showExPicker, setShowExPicker] = useState(false);
 
-  // Session timer
   useEffect(() => {
     if (phase === "active") {
       timerRef.current = setInterval(() => setElapsed((e) => e + 1), 1000);
@@ -45,7 +43,6 @@ export function WorkoutClient({ programs, allExercises }: Props) {
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [phase]);
 
-  // Rest timer
   useEffect(() => {
     if (restTimer?.running) {
       restRef.current = setInterval(() => {
@@ -114,9 +111,7 @@ export function WorkoutClient({ programs, allExercises }: Props) {
   function removeSet(exIndex: number, setIndex: number) {
     setLogExercises((prev) =>
       prev.map((ex, i) =>
-        i === exIndex
-          ? { ...ex, sets: ex.sets.filter((_, j) => j !== setIndex) }
-          : ex
+        i === exIndex ? { ...ex, sets: ex.sets.filter((_, j) => j !== setIndex) } : ex
       )
     );
   }
@@ -191,6 +186,7 @@ export function WorkoutClient({ programs, allExercises }: Props) {
     !freeExSearch || (ex.nameIt ?? ex.name).toLowerCase().includes(freeExSearch.toLowerCase())
   );
 
+  // ── DONE ─────────────────────────────────────────────────────────────────
   if (phase === "done") {
     return (
       <div className="px-4 py-16 text-center space-y-6">
@@ -202,27 +198,38 @@ export function WorkoutClient({ programs, allExercises }: Props) {
           <p className="text-zinc-400 mt-2">{completedSets} serie completate in {formatDuration(elapsed)}</p>
         </div>
         <Button className="w-full" onClick={() => router.push("/")}>Torna alla home</Button>
-        <Button variant="outline" className="w-full" onClick={() => { setPhase("select"); setElapsed(0); }}>Nuovo allenamento</Button>
+        <Button variant="outline" className="w-full" onClick={() => { setPhase("select"); setElapsed(0); setSessionNotes(""); }}>
+          Nuovo allenamento
+        </Button>
       </div>
     );
   }
 
+  // ── SELECT ────────────────────────────────────────────────────────────────
   if (phase === "select") {
     return (
       <div className="px-4 py-6 space-y-6">
         <h1 className="text-xl font-bold">Inizia allenamento</h1>
 
-        <Button variant="outline" className="w-full gap-2 h-14" onClick={startFreeWorkout}>
-          <Plus className="h-5 w-5" />
-          Allenamento libero
-        </Button>
+        <button
+          onClick={startFreeWorkout}
+          className="w-full rounded-2xl border border-dashed border-zinc-700 bg-zinc-900/50 p-4 flex items-center gap-4 hover:border-orange-500/40 hover:bg-zinc-900 transition-all active:bg-zinc-800 text-left"
+        >
+          <div className="rounded-xl bg-orange-500/10 p-3 shrink-0">
+            <Plus className="h-5 w-5 text-orange-400" />
+          </div>
+          <div>
+            <p className="font-semibold">Allenamento libero</p>
+            <p className="text-zinc-500 text-xs mt-0.5">Scegli gli esercizi al momento</p>
+          </div>
+        </button>
 
         {programs.length > 0 && (
           <div className="space-y-3">
-            <h2 className="text-sm font-semibold text-zinc-400">Dalle tue schede</h2>
+            <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Dalle tue schede</h2>
             {programs.map((program) => (
               <div key={program.id} className="space-y-2">
-                <p className="text-xs text-zinc-500 font-medium">{program.name}</p>
+                <p className="text-xs text-zinc-500 font-medium pl-1">{program.name}</p>
                 {program.days.map((day) => (
                   <button
                     key={day.id}
@@ -233,9 +240,9 @@ export function WorkoutClient({ programs, allExercises }: Props) {
                       <p className="font-semibold">{day.name}</p>
                       <Badge variant="secondary">{day.exercises.length} esercizi</Badge>
                     </div>
-                    <p className="text-zinc-400 text-xs mt-1">
+                    <p className="text-zinc-400 text-xs mt-1 truncate">
                       {day.exercises.slice(0, 3).map((e) => e.exercise.nameIt ?? e.exercise.name).join(", ")}
-                      {day.exercises.length > 3 && "..."}
+                      {day.exercises.length > 3 && ` +${day.exercises.length - 3}`}
                     </p>
                   </button>
                 ))}
@@ -247,135 +254,178 @@ export function WorkoutClient({ programs, allExercises }: Props) {
     );
   }
 
+  // ── ACTIVE ────────────────────────────────────────────────────────────────
   return (
-    <div className="px-4 py-4 space-y-4">
-      {/* Active header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="font-bold">{selectedDay?.name ?? "Allenamento libero"}</h1>
-          <p className="text-zinc-400 text-sm">{formatDuration(elapsed)} • {completedSets}/{totalSets} serie</p>
-        </div>
-        <button onClick={() => setPhase("select")} className="rounded-xl p-2 hover:bg-zinc-800 transition-colors">
-          <X className="h-5 w-5 text-zinc-400" />
-        </button>
-      </div>
-
-      {/* Rest timer */}
-      {restTimer && (
-        <div className="rounded-2xl bg-orange-500/10 border border-orange-500/30 p-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Timer className="h-5 w-5 text-orange-400" />
-            <div>
-              <p className="text-xs text-orange-300 font-medium">Recupero</p>
-              <p className="text-2xl font-bold text-orange-400">{formatDuration(restTimer.seconds)}</p>
-            </div>
+    <div className="pb-40">
+      {/* Sticky header: timer / progress bar */}
+      <div className="sticky top-0 z-20 bg-zinc-950/95 backdrop-blur-sm px-4 pt-4 pb-3 border-b border-zinc-800/50">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="font-bold text-sm truncate">{selectedDay?.name ?? "Allenamento libero"}</p>
+            {restTimer ? (
+              <div className="flex items-center gap-2 mt-0.5">
+                <Timer className="h-3.5 w-3.5 text-orange-400 shrink-0" />
+                <span className="text-orange-400 font-bold tabular-nums">{formatDuration(restTimer.seconds)}</span>
+                <span className="text-zinc-500 text-xs">recupero</span>
+                <button
+                  onClick={() => setRestTimer(null)}
+                  className="text-zinc-500 text-xs underline ml-1"
+                >
+                  Salta
+                </button>
+              </div>
+            ) : (
+              <p className="text-zinc-400 text-xs mt-0.5 tabular-nums">
+                {formatDuration(elapsed)} · {completedSets}/{totalSets} serie
+              </p>
+            )}
           </div>
-          <button onClick={() => setRestTimer(null)} className="text-orange-300 text-sm font-medium">
-            Salta
+          <button
+            onClick={() => setPhase("select")}
+            className="rounded-xl p-2 hover:bg-zinc-800 transition-colors shrink-0"
+            title="Abbandona allenamento"
+          >
+            <X className="h-5 w-5 text-zinc-400" />
           </button>
         </div>
-      )}
 
-      {/* Exercises */}
-      <div className="space-y-3">
-        {logExercises.map((ex, exI) => {
-          const isExpanded = expandedEx === exI;
-          const doneCount = ex.sets.filter((s) => s.done).length;
-          return (
-            <Card key={exI} className={doneCount === ex.sets.length && ex.sets.length > 0 ? "border-green-500/30" : ""}>
-              <CardContent className="p-0">
-                <button
-                  className="w-full flex items-center justify-between p-4"
-                  onClick={() => setExpandedEx(isExpanded ? null : exI)}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`rounded-lg p-2 ${doneCount === ex.sets.length && ex.sets.length > 0 ? "bg-green-500/10" : "bg-orange-500/10"}`}>
-                      <Dumbbell className={`h-4 w-4 ${doneCount === ex.sets.length && ex.sets.length > 0 ? "text-green-400" : "text-orange-400"}`} />
-                    </div>
-                    <div className="text-left">
-                      <p className="font-medium text-sm">{ex.name}</p>
-                      <p className="text-zinc-500 text-xs">{doneCount}/{ex.sets.length} serie</p>
-                    </div>
-                  </div>
-                  {isExpanded ? <ChevronUp className="h-4 w-4 text-zinc-500" /> : <ChevronDown className="h-4 w-4 text-zinc-500" />}
-                </button>
-
-                {isExpanded && (
-                  <div className="px-4 pb-4 space-y-2">
-                    {/* Set header */}
-                    <div className="grid grid-cols-[2rem_1fr_1fr_2.5rem] gap-2 text-[10px] text-zinc-500 font-medium px-1">
-                      <span>#</span><span>Peso (kg)</span><span>Reps</span><span></span>
-                    </div>
-
-                    {ex.sets.map((set, setI) => (
-                      <div key={setI} className={`grid grid-cols-[2rem_1fr_1fr_2.5rem] gap-2 items-center rounded-xl p-2 ${set.done ? "bg-green-500/5" : "bg-zinc-900"}`}>
-                        <span className="text-xs text-zinc-500 text-center">{setI + 1}</span>
-                        <input
-                          type="number"
-                          value={set.weight ?? ""}
-                          onChange={(e) => updateSet(exI, setI, "weight", e.target.value ? parseFloat(e.target.value) : null)}
-                          placeholder="—"
-                          className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-2 py-2 text-sm text-center focus:outline-none focus:border-orange-500"
-                          step={2.5}
-                        />
-                        <input
-                          type="number"
-                          value={set.reps}
-                          onChange={(e) => updateSet(exI, setI, "reps", parseInt(e.target.value))}
-                          className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-2 py-2 text-sm text-center focus:outline-none focus:border-orange-500"
-                          min={1}
-                        />
-                        <button
-                          onClick={() => toggleSetDone(exI, setI)}
-                          className={`rounded-lg h-9 w-9 flex items-center justify-center transition-all ${set.done ? "bg-green-500 text-white" : "border border-zinc-700 bg-zinc-800 text-zinc-500"}`}
-                        >
-                          <Check className="h-4 w-4" />
-                        </button>
-                      </div>
-                    ))}
-
-                    <div className="flex gap-2 pt-1">
-                      <Button variant="ghost" size="sm" className="gap-1 text-xs" onClick={() => addSet(exI)}>
-                        <Plus className="h-3 w-3" />
-                        Serie
-                      </Button>
-                      {ex.sets.length > 1 && (
-                        <Button variant="ghost" size="sm" className="gap-1 text-xs text-red-400 hover:text-red-300" onClick={() => removeSet(exI, ex.sets.length - 1)}>
-                          <X className="h-3 w-3" />
-                          Rimuovi
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          );
-        })}
+        {totalSets > 0 && (
+          <div className="mt-3 h-1.5 rounded-full bg-zinc-800 overflow-hidden">
+            <div
+              className="h-full rounded-full bg-orange-500 transition-all duration-500 ease-out"
+              style={{ width: `${Math.round((completedSets / totalSets) * 100)}%` }}
+            />
+          </div>
+        )}
       </div>
 
-      {/* Add exercise */}
-      <Button variant="outline" className="w-full gap-2" onClick={() => setShowExPicker(true)}>
-        <Plus className="h-4 w-4" />
-        Aggiungi esercizio
-      </Button>
+      {/* Scrollable content */}
+      <div className="px-4 pt-4 space-y-4">
+        {/* Exercise list */}
+        <div className="space-y-3">
+          {logExercises.map((ex, exI) => {
+            const isExpanded = expandedEx === exI;
+            const doneCount = ex.sets.filter((s) => s.done).length;
+            const allDone = doneCount === ex.sets.length && ex.sets.length > 0;
+            return (
+              <Card key={exI} className={allDone ? "border-green-500/30" : ""}>
+                <CardContent className="p-0">
+                  <button
+                    className="w-full flex items-center justify-between p-4"
+                    onClick={() => setExpandedEx(isExpanded ? null : exI)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`rounded-lg p-2 ${allDone ? "bg-green-500/10" : "bg-orange-500/10"}`}>
+                        <Dumbbell className={`h-4 w-4 ${allDone ? "text-green-400" : "text-orange-400"}`} />
+                      </div>
+                      <div className="text-left">
+                        <p className="font-medium text-sm">{ex.name}</p>
+                        <p className="text-zinc-500 text-xs">{doneCount}/{ex.sets.length} serie</p>
+                      </div>
+                    </div>
+                    {isExpanded
+                      ? <ChevronUp className="h-4 w-4 text-zinc-500 shrink-0" />
+                      : <ChevronDown className="h-4 w-4 text-zinc-500 shrink-0" />
+                    }
+                  </button>
 
-      {/* Notes */}
-      <textarea
-        value={sessionNotes}
-        onChange={(e) => setSessionNotes(e.target.value)}
-        placeholder="Note sull'allenamento..."
-        rows={2}
-        className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-orange-500 focus:outline-none resize-none"
-      />
+                  {isExpanded && (
+                    <div className="px-4 pb-4 space-y-2">
+                      <div className="grid grid-cols-[1.5rem_1fr_1fr_2.75rem] gap-2 text-[10px] text-zinc-500 font-medium px-1 mb-1">
+                        <span>#</span>
+                        <span className="text-center">Peso (kg)</span>
+                        <span className="text-center">Reps</span>
+                        <span />
+                      </div>
 
-      {/* Finish */}
-      <Button className="w-full h-13 gap-2 text-base" onClick={finishWorkout} disabled={saving || completedSets === 0}>
-        <Flag className="h-5 w-5" />
-        {saving ? "Salvataggio..." : `Termina allenamento (${completedSets} serie)`}
-      </Button>
+                      {ex.sets.map((set, setI) => (
+                        <div
+                          key={setI}
+                          className={`grid grid-cols-[1.5rem_1fr_1fr_2.75rem] gap-2 items-center rounded-xl px-2 py-1 transition-colors ${set.done ? "bg-green-500/5" : "bg-zinc-900"}`}
+                        >
+                          <span className="text-xs text-zinc-500 text-center font-medium">{setI + 1}</span>
+                          <input
+                            type="number"
+                            value={set.weight ?? ""}
+                            onChange={(e) => updateSet(exI, setI, "weight", e.target.value ? parseFloat(e.target.value) : null)}
+                            placeholder="—"
+                            className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-2 py-2.5 text-sm text-center focus:outline-none focus:border-orange-500"
+                            step={2.5}
+                          />
+                          <input
+                            type="number"
+                            value={set.reps}
+                            onChange={(e) => updateSet(exI, setI, "reps", parseInt(e.target.value))}
+                            className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-2 py-2.5 text-sm text-center focus:outline-none focus:border-orange-500"
+                            min={1}
+                          />
+                          <button
+                            onClick={() => toggleSetDone(exI, setI)}
+                            className={`rounded-lg h-10 w-10 flex items-center justify-center transition-all ${
+                              set.done
+                                ? "bg-green-500 text-white"
+                                : "border border-zinc-700 bg-zinc-800 text-zinc-500 active:bg-zinc-700"
+                            }`}
+                          >
+                            <Check className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ))}
 
-      {/* Exercise picker */}
+                      <div className="flex gap-2 pt-1">
+                        <Button variant="ghost" size="sm" className="gap-1 text-xs" onClick={() => addSet(exI)}>
+                          <Plus className="h-3 w-3" />
+                          Serie
+                        </Button>
+                        {ex.sets.length > 1 && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="gap-1 text-xs text-red-400 hover:text-red-300"
+                            onClick={() => removeSet(exI, ex.sets.length - 1)}
+                          >
+                            <X className="h-3 w-3" />
+                            Rimuovi ultima
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+
+        <Button variant="outline" className="w-full gap-2" onClick={() => setShowExPicker(true)}>
+          <Plus className="h-4 w-4" />
+          Aggiungi esercizio
+        </Button>
+
+        <textarea
+          value={sessionNotes}
+          onChange={(e) => setSessionNotes(e.target.value)}
+          placeholder="Note sull'allenamento..."
+          rows={2}
+          className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-orange-500 focus:outline-none resize-none"
+        />
+      </div>
+
+      {/* Fixed finish button — above bottom nav */}
+      <div className="fixed bottom-16 inset-x-0 z-30">
+        <div className="max-w-lg mx-auto px-4 pt-2.5 pb-2.5 bg-zinc-950/95 backdrop-blur-sm border-t border-zinc-800/60">
+          <Button
+            className="w-full h-12 gap-2 font-semibold"
+            onClick={finishWorkout}
+            disabled={saving || completedSets === 0}
+          >
+            <Flag className="h-4 w-4" />
+            {saving ? "Salvataggio..." : `Termina  ·  ${completedSets}/${totalSets} serie`}
+          </Button>
+        </div>
+      </div>
+
+      {/* Exercise picker modal */}
       {showExPicker && (
         <div className="fixed inset-0 z-50 bg-black/80 flex flex-col justify-end">
           <div className="bg-zinc-950 rounded-t-2xl flex flex-col" style={{ maxHeight: "70dvh" }}>
