@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   ArrowLeft, UserPlus, Trash2, RotateCcw, Users, Loader2, Eye, EyeOff,
-  Upload, Download, CheckCircle2
+  Upload, Download, CheckCircle2, Copy, Check
 } from "lucide-react";
 import Link from "next/link";
 import { formatShortDate } from "@/lib/utils";
@@ -28,10 +28,11 @@ export function AdminClient({ users: initial, currentUserId }: { users: User[]; 
   const [newPassword, setNewPassword] = useState("");
   const [newRole, setNewRole] = useState<"USER" | "ADMIN">("USER");
   const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [resetInfo, setResetInfo] = useState<{ userId: string; tempPassword: string } | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<{ updated: number; notFound: number; total: number } | null>(null);
   const [importError, setImportError] = useState("");
@@ -39,7 +40,7 @@ export function AdminClient({ users: initial, currentUserId }: { users: User[]; 
   async function createUser(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    setLoading(true);
+    setLoading("create");
     try {
       const res = await fetch("/api/admin/users", {
         method: "POST",
@@ -57,12 +58,12 @@ export function AdminClient({ users: initial, currentUserId }: { users: User[]; 
         setError(data.error ?? "Errore nella creazione utente");
       }
     } finally {
-      setLoading(false);
+      setLoading(null);
     }
   }
 
   async function deleteUser(userId: string) {
-    setLoading(true);
+    setLoading(`delete-${userId}`);
     try {
       const res = await fetch(`/api/admin/users/${userId}`, { method: "DELETE" });
       if (res.ok) {
@@ -70,12 +71,12 @@ export function AdminClient({ users: initial, currentUserId }: { users: User[]; 
         setDeleteConfirm(null);
       }
     } finally {
-      setLoading(false);
+      setLoading(null);
     }
   }
 
   async function resetPassword(userId: string) {
-    setLoading(true);
+    setLoading(`reset-${userId}`);
     try {
       const res = await fetch(`/api/admin/users/${userId}`, {
         method: "PATCH",
@@ -87,8 +88,14 @@ export function AdminClient({ users: initial, currentUserId }: { users: User[]; 
         setResetInfo({ userId, tempPassword: data.tempPassword });
       }
     } finally {
-      setLoading(false);
+      setLoading(null);
     }
+  }
+
+  function copyPassword(password: string) {
+    navigator.clipboard.writeText(password);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   }
 
   async function importCsv(e: React.ChangeEvent<HTMLInputElement>) {
@@ -215,8 +222,8 @@ export function AdminClient({ users: initial, currentUserId }: { users: User[]; 
               </div>
               {error && <p className="text-red-400 text-sm">{error}</p>}
               <div className="flex gap-2">
-                <Button type="submit" size="sm" className="flex-1" disabled={loading}>
-                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Crea utente"}
+                <Button type="submit" size="sm" className="flex-1" disabled={loading === "create"}>
+                  {loading === "create" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Crea utente"}
                 </Button>
                 <Button type="button" variant="outline" size="sm" onClick={() => setShowForm(false)}>
                   Annulla
@@ -235,8 +242,19 @@ export function AdminClient({ users: initial, currentUserId }: { users: User[]; 
             <p className="text-xs text-zinc-400">
               Comunica questa password temporanea all&apos;utente — non verrà mostrata di nuovo.
             </p>
-            <div className="rounded-lg bg-zinc-800 px-3 py-2 font-mono text-sm text-white">
-              {resetInfo.tempPassword}
+            <div className="flex items-center gap-2">
+              <div className="flex-1 rounded-lg bg-zinc-800 px-3 py-2 font-mono text-sm text-white">
+                {resetInfo.tempPassword}
+              </div>
+              <Button
+                size="icon"
+                variant="outline"
+                className="h-9 w-9 shrink-0"
+                onClick={() => copyPassword(resetInfo.tempPassword)}
+                title="Copia password"
+              >
+                {copied ? <Check className="h-4 w-4 text-green-400" /> : <Copy className="h-4 w-4" />}
+              </Button>
             </div>
             <Button size="sm" variant="outline" onClick={() => setResetInfo(null)} className="w-full">
               Ho salvato la password
@@ -278,10 +296,12 @@ export function AdminClient({ users: initial, currentUserId }: { users: User[]; 
                       size="icon"
                       className="h-8 w-8 text-zinc-400 hover:text-orange-400"
                       onClick={() => resetPassword(user.id)}
-                      disabled={loading}
+                      disabled={loading !== null}
                       title="Reimposta password"
                     >
-                      <RotateCcw className="h-4 w-4" />
+                      {loading === `reset-${user.id}`
+                        ? <Loader2 className="h-4 w-4 animate-spin" />
+                        : <RotateCcw className="h-4 w-4" />}
                     </Button>
                     {deleteConfirm === user.id ? (
                       <div className="flex gap-1">
@@ -289,10 +309,10 @@ export function AdminClient({ users: initial, currentUserId }: { users: User[]; 
                           variant="destructive"
                           size="sm"
                           onClick={() => deleteUser(user.id)}
-                          disabled={loading}
+                          disabled={loading !== null}
                           className="h-8 text-xs"
                         >
-                          Elimina
+                          {loading === `delete-${user.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Elimina"}
                         </Button>
                         <Button
                           variant="ghost"

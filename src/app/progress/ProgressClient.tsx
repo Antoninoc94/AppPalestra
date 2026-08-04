@@ -66,8 +66,11 @@ export function ProgressClient({ exercises, recentSessions }: Props) {
           onChange={(e) => setSearch(e.target.value)}
           className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-orange-500 focus:outline-none"
         />
+        {filteredExercises.length === 0 && search && (
+          <p className="text-sm text-zinc-500 text-center py-2">Nessun esercizio trovato</p>
+        )}
         <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
-          {filteredExercises.slice(0, 15).map((ex) => (
+          {filteredExercises.map((ex) => (
             <button
               key={ex.id}
               onClick={() => setSelectedExercise(ex.id)}
@@ -80,6 +83,14 @@ export function ProgressClient({ exercises, recentSessions }: Props) {
           ))}
         </div>
       </div>
+
+      {/* Empty state */}
+      {!selectedExercise && (
+        <div className="text-center py-10 text-zinc-500">
+          <TrendingUp className="h-8 w-8 mx-auto mb-2 opacity-30" />
+          <p className="text-sm">Seleziona un esercizio per vedere i progressi</p>
+        </div>
+      )}
 
       {/* Chart */}
       {selectedExercise && (
@@ -100,7 +111,7 @@ export function ProgressClient({ exercises, recentSessions }: Props) {
               <div className="space-y-4">
                 <div>
                   <p className="text-xs text-zinc-400 mb-2">Peso massimo (kg)</p>
-                  <ResponsiveContainer width="100%" height={160}>
+                  <ResponsiveContainer width="100%" height={200}>
                     <LineChart data={progressData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
                       <XAxis dataKey="date" tick={{ fill: "#71717a", fontSize: 10 }} />
@@ -108,23 +119,26 @@ export function ProgressClient({ exercises, recentSessions }: Props) {
                       <Tooltip
                         contentStyle={{ background: "#18181b", border: "1px solid #27272a", borderRadius: 8, color: "#f4f4f5" }}
                         labelStyle={{ color: "#a1a1aa" }}
+                        formatter={(value) => [`${value} kg`, "Peso max"]}
                       />
-                      <Line type="monotone" dataKey="maxWeight" stroke="#f97316" strokeWidth={2} dot={{ fill: "#f97316", r: 3 }} />
+                      <Line type="monotone" dataKey="maxWeight" stroke="#f97316" strokeWidth={2} dot={{ fill: "#f97316", r: 3 }} activeDot={{ r: 5 }} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
 
                 <div>
                   <p className="text-xs text-zinc-400 mb-2">Volume totale (kg × reps)</p>
-                  <ResponsiveContainer width="100%" height={120}>
+                  <ResponsiveContainer width="100%" height={160}>
                     <LineChart data={progressData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
                       <XAxis dataKey="date" tick={{ fill: "#71717a", fontSize: 10 }} />
                       <YAxis tick={{ fill: "#71717a", fontSize: 10 }} width={40} />
                       <Tooltip
                         contentStyle={{ background: "#18181b", border: "1px solid #27272a", borderRadius: 8, color: "#f4f4f5" }}
+                        labelStyle={{ color: "#a1a1aa" }}
+                        formatter={(value) => [`${value}`, "Volume"]}
                       />
-                      <Line type="monotone" dataKey="totalVolume" stroke="#818cf8" strokeWidth={2} dot={{ fill: "#818cf8", r: 3 }} />
+                      <Line type="monotone" dataKey="totalVolume" stroke="#818cf8" strokeWidth={2} dot={{ fill: "#818cf8", r: 3 }} activeDot={{ r: 5 }} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>

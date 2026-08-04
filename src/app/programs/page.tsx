@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Plus, ClipboardList, ChevronRight, Dumbbell } from "lucide-react";
+import { Plus, ClipboardList, ChevronRight, Dumbbell, Play } from "lucide-react";
 import { getGoalLabel, formatShortDate } from "@/lib/utils";
 import Link from "next/link";
 
@@ -22,7 +22,7 @@ export default async function ProgramsPage() {
       },
       _count: { select: { sessions: true } },
     },
-    orderBy: { createdAt: "desc" },
+    orderBy: [{ isActive: "desc" }, { createdAt: "desc" }],
   });
 
   return (
@@ -52,17 +52,17 @@ export default async function ProgramsPage() {
       ) : (
         <div className="space-y-3">
           {programs.map((program) => (
-            <Link key={program.id} href={`/programs/${program.id}`}>
-              <Card className="active:bg-zinc-800 transition-colors">
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between">
+            <Card key={program.id} className={`transition-colors ${program.isActive ? "border-orange-500/30" : ""}`}>
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <Link href={`/programs/${program.id}`} className="flex-1 min-w-0">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <h3 className="font-semibold">{program.name}</h3>
                         {program.isActive && <Badge variant="success">Attiva</Badge>}
                       </div>
                       {program.description && (
-                        <p className="text-zinc-400 text-sm">{program.description}</p>
+                        <p className="text-zinc-400 text-sm line-clamp-1">{program.description}</p>
                       )}
                       <div className="flex items-center gap-3 text-xs text-zinc-500 mt-2">
                         <span className="flex items-center gap-1">
@@ -76,27 +76,34 @@ export default async function ProgramsPage() {
                         <span>{formatShortDate(program.createdAt)}</span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary">{getGoalLabel(program.goal)}</Badge>
+                  </Link>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Badge variant="secondary">{getGoalLabel(program.goal)}</Badge>
+                    <Link href="/workout" title="Inizia allenamento">
+                      <Button size="icon" variant="ghost" className="h-8 w-8 text-orange-400 hover:text-orange-300 hover:bg-orange-500/10">
+                        <Play className="h-4 w-4 fill-current" />
+                      </Button>
+                    </Link>
+                    <Link href={`/programs/${program.id}`}>
                       <ChevronRight className="h-4 w-4 text-zinc-600" />
-                    </div>
+                    </Link>
                   </div>
+                </div>
 
-                  {/* Days preview */}
-                  <div className="flex gap-2 mt-3 flex-wrap">
-                    {program.days.map((day) => (
-                      <div
-                        key={day.id}
-                        className="rounded-lg bg-zinc-800 px-2.5 py-1 text-xs text-zinc-300"
-                      >
-                        {day.name}
-                        <span className="text-zinc-500 ml-1">({day._count.exercises})</span>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
+                {/* Days preview */}
+                <div className="flex gap-2 mt-3 flex-wrap">
+                  {program.days.map((day) => (
+                    <div
+                      key={day.id}
+                      className="rounded-lg bg-zinc-800 px-2.5 py-1 text-xs text-zinc-300"
+                    >
+                      {day.name}
+                      <span className="text-zinc-500 ml-1">({day._count.exercises})</span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
           ))}
         </div>
       )}

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, X, Check, Timer, ChevronDown, ChevronUp, Dumbbell, Flag } from "lucide-react";
+import { Plus, X, Check, Timer, ChevronDown, ChevronUp, Dumbbell, Flag, AlertTriangle, Filter } from "lucide-react";
 import { formatDuration } from "@/lib/utils";
 
 interface Exercise { id: string; name: string; nameIt: string | null; primaryMuscle: { nameIt: string } }
@@ -35,6 +35,9 @@ export function WorkoutClient({ programs, allExercises }: Props) {
   const restRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [freeExSearch, setFreeExSearch] = useState("");
   const [showExPicker, setShowExPicker] = useState(false);
+  const [showAbandonConfirm, setShowAbandonConfirm] = useState(false);
+  const [noSetsError, setNoSetsError] = useState(false);
+  const [muscleFilter, setMuscleFilter] = useState("");
 
   useEffect(() => {
     if (phase === "active") {
@@ -125,7 +128,12 @@ export function WorkoutClient({ programs, allExercises }: Props) {
               sets: ex.sets.map((s, j) => {
                 if (j !== setIndex) return s;
                 const nowDone = !s.done;
-                if (nowDone) setRestTimer({ seconds: ex.restSeconds, running: true });
+                if (nowDone) {
+                  setRestTimer({ seconds: ex.restSeconds, running: true });
+                } else {
+                  if (restRef.current) clearInterval(restRef.current);
+                  setRestTimer(null);
+                }
                 return { ...s, done: nowDone };
               }),
             }
@@ -160,7 +168,8 @@ export function WorkoutClient({ programs, allExercises }: Props) {
 
     if (allSets.length === 0) {
       setSaving(false);
-      setPhase("select");
+      setNoSetsError(true);
+      setTimeout(() => setNoSetsError(false), 3000);
       return;
     }
 
@@ -182,9 +191,13 @@ export function WorkoutClient({ programs, allExercises }: Props) {
 
   const completedSets = logExercises.flatMap((ex) => ex.sets).filter((s) => s.done).length;
   const totalSets = logExercises.flatMap((ex) => ex.sets).length;
-  const filteredFreeEx = allExercises.filter((ex) =>
-    !freeExSearch || (ex.nameIt ?? ex.name).toLowerCase().includes(freeExSearch.toLowerCase())
-  );
+  const muscleGroups = Array.from(new Set(allExercises.map((ex) => ex.primaryMuscle.nameIt))).sort();
+
+  const filteredFreeEx = allExercises.filter((ex) => {
+    const matchName = !freeExSearch || (ex.nameIt ?? ex.name).toLowerCase().includes(freeExSearch.toLowerCase());
+    const matchMuscle = !muscleFilter || ex.primaryMuscle.nameIt === muscleFilter;
+    return matchName && matchMuscle;
+  });
 
   // ── DONE ─────────────────────────────────────────────────────────────────
   if (phase === "done") {
@@ -281,7 +294,7 @@ export function WorkoutClient({ programs, allExercises }: Props) {
             )}
           </div>
           <button
-            onClick={() => setPhase("select")}
+            onClick={() => setShowAbandonConfirm(true)}
             className="rounded-xl p-2 hover:bg-zinc-800 transition-colors shrink-0"
             title="Abbandona allenamento"
           >
@@ -420,22 +433,61 @@ export function WorkoutClient({ programs, allExercises }: Props) {
             disabled={saving || completedSets === 0}
           >
             <Flag className="h-4 w-4" />
-            {saving ? "Salvataggio..." : `Termina  ·  ${completedSets}/${totalSets} serie`}
+            {saving ? "Salvataggio..." : `Termina · ${completedSets}/${totalSets} serie`}
           </Button>
         </div>
       </div>
 
+      {/* No sets error toast */}
+      {noSetsError && (
+        <div className="fixed bottom-32 inset-x-0 z-40 flex justify-center px-4">
+          <div className="flex items-center gap-2 rounded-xl bg-zinc-800 border border-zinc-700 px-4 py-3 text-sm text-zinc-100 shadow-xl">
+            <AlertTriangle className="h-4 w-4 text-orange-400 shrink-0" />
+            Completa almeno una serie prima di terminare
+          </div>
+        </div>
+      )}
+
+      {/* Abandon confirmation dialog */}
+      {showAbandonConfirm && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center px-6">
+          <div className="w-full max-w-sm rounded-2xl bg-zinc-900 border border-zinc-800 p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="rounded-xl bg-red-500/10 p-2.5 shrink-0">
+                <AlertTriangle className="h-5 w-5 text-red-400" />
+              </div>
+              <div>
+                <p className="font-semibold">Abbandonare l&apos;allenamento?</p>
+                <p className="text-zinc-400 text-sm mt-0.5">I progressi non salvati andranno persi.</p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <Button
+                variant="destructive"
+                className="flex-1"
+                onClick={() => { setShowAbandonConfirm(false); setPhase("select"); setElapsed(0); setSessionNotes(""); }}
+              >
+                Abbandona
+              </Button>
+              <Button variant="outline" className="flex-1" onClick={() => setShowAbandonConfirm(false)}>
+                Continua
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Exercise picker modal */}
       {showExPicker && (
         <div className="fixed inset-0 z-50 bg-black/80 flex flex-col justify-end">
-          <div className="bg-zinc-950 rounded-t-2xl flex flex-col" style={{ maxHeight: "70dvh" }}>
+          <div className="bg-zinc-950 rounded-t-2xl flex flex-col" style={{ maxHeight: "75dvh" }}>
             <div className="p-4 border-b border-zinc-800 flex items-center justify-between shrink-0">
               <h3 className="font-semibold">Aggiungi esercizio</h3>
-              <button onClick={() => setShowExPicker(false)}>
+              <button onClick={() => { setShowExPicker(false); setFreeExSearch(""); setMuscleFilter(""); }}>
                 <X className="h-5 w-5 text-zinc-400" />
               </button>
             </div>
-            <div className="p-4 shrink-0">
+            <div className="px-4 pt-3 pb-2 shrink-0 space-y-2">
               <input
                 type="search"
                 placeholder="Cerca esercizio..."
@@ -444,18 +496,44 @@ export function WorkoutClient({ programs, allExercises }: Props) {
                 className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-2.5 text-sm focus:outline-none focus:border-orange-500"
                 autoFocus
               />
+              <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
+                <button
+                  onClick={() => setMuscleFilter("")}
+                  className={`shrink-0 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                    !muscleFilter ? "bg-orange-500 text-white" : "bg-zinc-800 text-zinc-300"
+                  }`}
+                >
+                  <Filter className="h-3 w-3" />
+                  Tutti
+                </button>
+                {muscleGroups.map((m) => (
+                  <button
+                    key={m}
+                    onClick={() => setMuscleFilter(m === muscleFilter ? "" : m)}
+                    className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                      muscleFilter === m ? "bg-orange-500 text-white" : "bg-zinc-800 text-zinc-300"
+                    }`}
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
             </div>
             <div className="overflow-y-auto flex-1 px-4 pb-safe space-y-2">
-              {filteredFreeEx.map((ex) => (
-                <button
-                  key={ex.id}
-                  onClick={() => addFreeExercise(ex)}
-                  className="w-full text-left rounded-xl border border-zinc-800 bg-zinc-900 p-3 hover:border-orange-500/50 active:bg-zinc-800 transition-colors"
-                >
-                  <p className="font-medium text-sm">{ex.nameIt ?? ex.name}</p>
-                  <p className="text-zinc-400 text-xs mt-0.5">{ex.primaryMuscle.nameIt}</p>
-                </button>
-              ))}
+              {filteredFreeEx.length === 0 ? (
+                <p className="text-center text-zinc-500 text-sm py-8">Nessun esercizio trovato</p>
+              ) : (
+                filteredFreeEx.map((ex) => (
+                  <button
+                    key={ex.id}
+                    onClick={() => addFreeExercise(ex)}
+                    className="w-full text-left rounded-xl border border-zinc-800 bg-zinc-900 p-3 hover:border-orange-500/50 active:bg-zinc-800 transition-colors"
+                  >
+                    <p className="font-medium text-sm">{ex.nameIt ?? ex.name}</p>
+                    <p className="text-zinc-400 text-xs mt-0.5">{ex.primaryMuscle.nameIt}</p>
+                  </button>
+                ))
+              )}
             </div>
           </div>
         </div>

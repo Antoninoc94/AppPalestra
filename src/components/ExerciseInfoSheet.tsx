@@ -74,7 +74,7 @@ export function ExerciseInfoSheet({ exercise, onClose }: Props) {
               {getDifficultyLabel(exercise.difficulty)}
             </span>
             {exercise.equipment.length > 0 &&
-              exercise.equipment.slice(0, 2).map((eq) => (
+              exercise.equipment.map((eq) => (
                 <span
                   key={eq.equipment.id}
                   className="rounded-full bg-zinc-800 px-3 py-1.5 text-xs font-medium text-zinc-300"
@@ -85,13 +85,13 @@ export function ExerciseInfoSheet({ exercise, onClose }: Props) {
           </div>
 
           {/* Muscoli secondari */}
-          {exercise.secondaryMuscles.length > 0 && (
+          {(exercise.secondaryMuscles ?? []).length > 0 && (
             <div>
               <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">
                 Muscoli secondari
               </p>
               <p className="text-sm text-zinc-300">
-                {exercise.secondaryMuscles.join(", ")}
+                {(exercise.secondaryMuscles ?? []).join(", ")}
               </p>
             </div>
           )}
