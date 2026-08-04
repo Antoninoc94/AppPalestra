@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, ChevronLeft, Dumbbell, Sparkles, GripVertical, X, RefreshCw } from "lucide-react";
+import { Plus, Trash2, ChevronLeft, Dumbbell, Sparkles, GripVertical, X, RefreshCw, Info } from "lucide-react";
 import { getGoalLabel, getDifficultyLabel } from "@/lib/utils";
+import { ExerciseInfoSheet } from "@/components/ExerciseInfoSheet";
 import type { ExerciseWithRelations } from "@/types";
 
 interface MuscleGroup { id: string; name: string; nameIt: string }
@@ -71,6 +72,7 @@ export function NewProgramClient({ muscleGroups, equipment, exercises }: Props) 
   const [mode, setMode] = useState<"manual" | "generate">("manual");
   const [replaceIndex, setReplaceIndex] = useState<number | null>(null);
   const [replaceSearch, setReplaceSearch] = useState("");
+  const [infoExercise, setInfoExercise] = useState<ExerciseWithRelations | null>(null);
 
   const filteredExercises = exercises.filter((ex) => {
     const matchSearch =
@@ -541,11 +543,17 @@ export function NewProgramClient({ muscleGroups, equipment, exercises }: Props) 
                 <Card key={exI}>
                   <CardContent className="p-3 space-y-3">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <GripVertical className="h-4 w-4 text-zinc-600" />
-                        <p className="font-medium text-sm">{ex.exerciseName}</p>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <GripVertical className="h-4 w-4 text-zinc-600 shrink-0" />
+                        <p className="font-medium text-sm truncate">{ex.exerciseName}</p>
+                        <button
+                          onClick={() => setInfoExercise(exercises.find((e) => e.id === ex.exerciseId) ?? null)}
+                          className="text-zinc-500 hover:text-orange-400 transition-colors shrink-0"
+                        >
+                          <Info className="h-3.5 w-3.5" />
+                        </button>
                       </div>
-                      <button onClick={() => removeExerciseFromDay(activeDayIndex, exI)}>
+                      <button onClick={() => removeExerciseFromDay(activeDayIndex, exI)} className="shrink-0">
                         <X className="h-4 w-4 text-zinc-500 hover:text-red-400" />
                       </button>
                     </div>
@@ -616,6 +624,8 @@ export function NewProgramClient({ muscleGroups, equipment, exercises }: Props) 
         </div>
       )}
 
+      <ExerciseInfoSheet exercise={infoExercise} onClose={() => setInfoExercise(null)} />
+
       {/* Exercise picker modal */}
       {showPicker && (
         <div className="fixed inset-0 z-50 bg-black/80 flex flex-col justify-end">
@@ -650,14 +660,24 @@ export function NewProgramClient({ muscleGroups, equipment, exercises }: Props) 
             </div>
             <div className="overflow-y-auto flex-1 px-4 pb-4 space-y-2">
               {filteredExercises.map((ex) => (
-                <button
+                <div
                   key={ex.id}
-                  onClick={() => addExerciseToDay(ex)}
-                  className="w-full text-left rounded-xl border border-zinc-800 bg-zinc-900 p-3 hover:border-orange-500/50 active:bg-zinc-800 transition-colors"
+                  className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900 p-3 hover:border-orange-500/50 transition-colors"
                 >
-                  <p className="font-medium text-sm">{ex.nameIt ?? ex.name}</p>
-                  <p className="text-zinc-400 text-xs mt-0.5">{ex.primaryMuscle.nameIt}</p>
-                </button>
+                  <button
+                    onClick={() => addExerciseToDay(ex)}
+                    className="flex-1 text-left min-w-0"
+                  >
+                    <p className="font-medium text-sm">{ex.nameIt ?? ex.name}</p>
+                    <p className="text-zinc-400 text-xs mt-0.5">{ex.primaryMuscle.nameIt}</p>
+                  </button>
+                  <button
+                    onClick={() => setInfoExercise(ex)}
+                    className="text-zinc-500 hover:text-orange-400 transition-colors shrink-0 p-1"
+                  >
+                    <Info className="h-4 w-4" />
+                  </button>
+                </div>
               ))}
             </div>
           </div>

@@ -4,8 +4,9 @@ import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Search, Filter, Dumbbell, ChevronDown } from "lucide-react";
+import { Search, Filter, Dumbbell, ChevronDown, Info } from "lucide-react";
 import { getDifficultyLabel } from "@/lib/utils";
+import { ExerciseInfoSheet } from "@/components/ExerciseInfoSheet";
 import type { ExerciseWithRelations } from "@/types";
 
 interface Props {
@@ -22,6 +23,7 @@ export function ExercisesClient({ muscleGroups, equipment }: Props) {
   const [selectedMuscle, setSelectedMuscle] = useState("");
   const [selectedDifficulty, setSelectedDifficulty] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+  const [infoExercise, setInfoExercise] = useState<ExerciseWithRelations | null>(null);
 
   const fetchExercises = useCallback(async (reset = false) => {
     setLoading(true);
@@ -134,10 +136,18 @@ export function ExercisesClient({ muscleGroups, equipment }: Props) {
                     <Dumbbell className="h-4 w-4 text-orange-400" />
                   </div>
                   <div className="min-w-0">
-                    <p className="font-medium text-sm leading-tight">
-                      {ex.nameIt ?? ex.name}
-                    </p>
-                    <p className="text-zinc-500 text-xs mt-0.5">{ex.name}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="font-medium text-sm leading-tight">
+                        {ex.nameIt ?? ex.name}
+                      </p>
+                      <button
+                        onClick={() => setInfoExercise(ex)}
+                        className="text-zinc-500 hover:text-orange-400 transition-colors shrink-0"
+                        aria-label="Info esercizio"
+                      >
+                        <Info className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                     <p className="text-zinc-400 text-xs mt-1">{ex.primaryMuscle.nameIt}</p>
                   </div>
                 </div>
@@ -158,6 +168,8 @@ export function ExercisesClient({ muscleGroups, equipment }: Props) {
           </Card>
         ))}
       </div>
+
+      <ExerciseInfoSheet exercise={infoExercise} onClose={() => setInfoExercise(null)} />
 
       {/* Load more */}
       {exercises.length < total && (
