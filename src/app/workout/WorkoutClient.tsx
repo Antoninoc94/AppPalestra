@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -43,51 +43,87 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
 
   function clearWorkoutStorage() {
     try { localStorage.removeItem(storageKey(userId)); } catch {}
+    fetch("/api/workout/draft", { method: "DELETE" }).catch(() => {});
   }
 
-  // Restore active workout from localStorage (survives tab changes)
-  useEffect(() => {
-    try {
-      localStorage.removeItem("apppalestra-workout-v1"); // cleanup old shared key
-      const raw = localStorage.getItem(storageKey(userId));
-      if (!raw) return;
-      const data = JSON.parse(raw);
-      if (data.phase !== "active") return;
-      const day = data.selectedDayId
-        ? programs.flatMap((p) => p.days).find((d) => d.id === data.selectedDayId) ?? null
-        : null;
-      setSelectedDay(day);
-      setLogExercises(data.logExercises ?? []);
-      setElapsed(data.elapsed ?? 0);
-      setSessionNotes(data.sessionNotes ?? "");
-      setExpandedEx(data.expandedEx ?? 0);
-      if (data.restTimerExpiresAt) {
-        const remaining = Math.ceil((data.restTimerExpiresAt - Date.now()) / 1000);
-        if (remaining > 0) {
-          setRestTimer({ seconds: remaining, running: true, expiresAt: data.restTimerExpiresAt, total: data.restTimerTotal ?? remaining });
-        }
+  function buildDraftData() {
+    return {
+      phase: "active",
+      selectedDayId: selectedDay?.id ?? null,
+      selectedDayName: selectedDay?.name ?? null,
+      logExercises,
+      elapsed,
+      sessionNotes,
+      expandedEx,
+      restTimerExpiresAt: restTimer?.expiresAt ?? null,
+      restTimerTotal: restTimer?.total ?? null,
+    };
+  }
+
+  const serverSyncRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const syncToServer = useCallback((data: object) => {
+    if (serverSyncRef.current) clearTimeout(serverSyncRef.current);
+    serverSyncRef.current = setTimeout(() => {
+      fetch("/api/workout/draft", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      }).catch(() => {});
+    }, 5000); // debounce 5s per non intasare il server
+  }, []);
+
+  function restoreFromData(data: { phase: string; selectedDayId?: string; selectedDayName?: string; logExercises?: typeof logExercises; elapsed?: number; sessionNotes?: string; expandedEx?: number | null; restTimerExpiresAt?: number | null; restTimerTotal?: number }) {
+    if (data.phase !== "active") return false;
+    const day = data.selectedDayId
+      ? programs.flatMap((p) => p.days).find((d) => d.id === data.selectedDayId) ?? null
+      : null;
+    setSelectedDay(day);
+    setLogExercises(data.logExercises ?? []);
+    setElapsed(data.elapsed ?? 0);
+    setSessionNotes(data.sessionNotes ?? "");
+    setExpandedEx(data.expandedEx ?? 0);
+    if (data.restTimerExpiresAt) {
+      const remaining = Math.ceil((data.restTimerExpiresAt - Date.now()) / 1000);
+      if (remaining > 0) {
+        setRestTimer({ seconds: remaining, running: true, expiresAt: data.restTimerExpiresAt, total: data.restTimerTotal ?? remaining });
       }
-      setPhase("active");
-    } catch {}
+    }
+    setPhase("active");
+    return true;
+  }
+
+  // Restore: prima da localStorage, poi dal server (cross-browser)
+  useEffect(() => {
+    async function restore() {
+      try {
+        localStorage.removeItem("apppalestra-workout-v1");
+        const raw = localStorage.getItem(storageKey(userId));
+        if (raw) {
+          const data = JSON.parse(raw);
+          if (restoreFromData(data)) return;
+        }
+      } catch {}
+      // localStorage vuoto o nessun allenamento attivo — prova dal server
+      try {
+        const res = await fetch("/api/workout/draft");
+        if (res.ok) {
+          const data = await res.json();
+          if (data) restoreFromData(data);
+        }
+      } catch {}
+    }
+    restore();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Persist workout state while active
+  // Persist workout state: localStorage (immediato) + server (debounced 5s)
   useEffect(() => {
     if (phase !== "active") return;
-    try {
-      localStorage.setItem(storageKey(userId), JSON.stringify({
-        phase,
-        selectedDayId: selectedDay?.id ?? null,
-        selectedDayName: selectedDay?.name ?? null,
-        logExercises,
-        elapsed,
-        sessionNotes,
-        expandedEx,
-        restTimerExpiresAt: restTimer?.expiresAt ?? null,
-        restTimerTotal: restTimer?.total ?? null,
-      }));
-    } catch {}
+    const draft = buildDraftData();
+    try { localStorage.setItem(storageKey(userId), JSON.stringify(draft)); } catch {}
+    syncToServer(draft);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, selectedDay, logExercises, elapsed, sessionNotes, expandedEx, restTimer]);
 
   useEffect(() => {
@@ -577,7 +613,7 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
       {/* Exercise picker modal */}
       {showExPicker && (
         <div className="fixed inset-0 z-[60] bg-black/80 flex flex-col justify-end">
-          <div className="bg-zinc-950 rounded-t-2xl flex flex-col" style={{ maxHeight: "85dvh" }}>
+          <div className="bg-zinc-950 rounded-t-2xl flex flex-col" style={{ height: "85svh" }}>
             <div className="p-4 border-b border-zinc-800 flex items-center justify-between shrink-0">
               <h3 className="font-semibold">Aggiungi esercizio</h3>
               <button onClick={() => { setShowExPicker(false); setFreeExSearch(""); setMuscleFilter(""); }}>
@@ -616,7 +652,7 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
                 ))}
               </div>
             </div>
-            <div className="overflow-y-auto flex-1 px-4 pb-safe space-y-2">
+            <div className="overflow-y-auto flex-1 px-4 pb-10 space-y-2">
               {filteredFreeEx.length === 0 ? (
                 <p className="text-center text-zinc-500 text-sm py-8">Nessun esercizio trovato</p>
               ) : (
