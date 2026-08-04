@@ -44,7 +44,7 @@ export function ProgressClient({ exercises, recentSessions }: Props) {
   }, [selectedExercise, fetchProgress]);
 
   const filteredExercises = exercises.filter((ex) =>
-    !search || (ex.nameIt ?? ex.name).toLowerCase().includes(search.toLowerCase())
+    !search || (ex.nameIt ?? ex.name).toLowerCase().includes(search.toLowerCase()) || ex.name.toLowerCase().includes(search.toLowerCase())
   );
 
   const selectedName = exercises.find((e) => e.id === selectedExercise);

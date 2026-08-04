@@ -263,7 +263,8 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
   const muscleGroups = Array.from(new Set(allExercises.map((ex) => ex.primaryMuscle.nameIt))).sort();
 
   const filteredFreeEx = allExercises.filter((ex) => {
-    const matchName = !freeExSearch || (ex.nameIt ?? ex.name).toLowerCase().includes(freeExSearch.toLowerCase());
+    const q = freeExSearch.toLowerCase();
+    const matchName = !freeExSearch || (ex.nameIt ?? ex.name).toLowerCase().includes(q) || ex.name.toLowerCase().includes(q);
     const matchMuscle = !muscleFilter || ex.primaryMuscle.nameIt === muscleFilter;
     return matchName && matchMuscle;
   });

@@ -77,7 +77,7 @@ export function NewProgramClient({ muscleGroups, equipment, exercises }: Props) 
   const filteredExercises = exercises.filter((ex) => {
     const matchSearch =
       !pickerSearch ||
-      (ex.nameIt ?? ex.name).toLowerCase().includes(pickerSearch.toLowerCase());
+      (ex.nameIt ?? ex.name).toLowerCase().includes(pickerSearch.toLowerCase()) || ex.name.toLowerCase().includes(pickerSearch.toLowerCase());
     const matchMuscle = !pickerMuscle || ex.primaryMuscle.id === pickerMuscle;
     return matchSearch && matchMuscle;
   });
