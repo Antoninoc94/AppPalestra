@@ -599,6 +599,16 @@ export function NewProgramClient({ muscleGroups, equipment, exercises }: Props) 
                         step={2.5}
                       />
                     </div>
+                    <div>
+                      <label className="text-[10px] text-zinc-500 block mb-1">Note personali</label>
+                      <textarea
+                        value={ex.notes ?? ""}
+                        onChange={(e) => updateExercise(activeDayIndex, exI, "notes", e.target.value)}
+                        placeholder="Es. grip neutro, focus sul picco..."
+                        rows={2}
+                        className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-2 py-1.5 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-orange-500 resize-none"
+                      />
+                    </div>
                   </CardContent>
                 </Card>
               ))}

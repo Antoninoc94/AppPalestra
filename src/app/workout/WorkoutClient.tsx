@@ -9,12 +9,12 @@ import { Plus, X, Check, Timer, ChevronDown, ChevronUp, Dumbbell, Flag, AlertTri
 import { formatDuration } from "@/lib/utils";
 
 interface Exercise { id: string; name: string; nameIt: string | null; primaryMuscle: { nameIt: string } }
-interface ProgramExercise { exerciseId: string; exercise: Exercise; sets: number; reps: string; restSeconds: number; weight: number | null }
+interface ProgramExercise { exerciseId: string; exercise: Exercise; sets: number; reps: string; restSeconds: number; weight: number | null; notes: string | null }
 interface ProgramDay { id: string; name: string; exercises: ProgramExercise[] }
 interface Program { id: string; name: string; days: ProgramDay[] }
 
 interface LogSet { reps: number; weight: number | null; done: boolean }
-interface LogExercise { exerciseId: string; name: string; sets: LogSet[]; targetReps: string; restSeconds: number }
+interface LogExercise { exerciseId: string; name: string; sets: LogSet[]; targetReps: string; restSeconds: number; notes?: string | null }
 
 interface Props {
   programs: Program[];
@@ -120,6 +120,7 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
         name: pe.exercise.nameIt ?? pe.exercise.name,
         targetReps: pe.reps,
         restSeconds: pe.restSeconds,
+        notes: pe.notes ?? null,
         sets: Array.from({ length: pe.sets }, () => ({
           reps: parseInt(pe.reps) || 10,
           weight: pe.weight ?? null,
@@ -386,6 +387,9 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
                       <div className="text-left">
                         <p className="font-medium text-sm">{ex.name}</p>
                         <p className="text-zinc-500 text-xs">{doneCount}/{ex.sets.length} serie</p>
+                        {ex.notes && (
+                          <p className="text-zinc-600 text-[10px] mt-0.5 italic max-w-[180px] truncate">{ex.notes}</p>
+                        )}
                       </div>
                     </div>
                     {isExpanded
@@ -396,6 +400,11 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
 
                   {isExpanded && (
                     <div className="px-4 pb-4 space-y-2">
+                      {ex.notes && (
+                        <div className="rounded-lg bg-zinc-800/60 px-3 py-2">
+                          <p className="text-zinc-400 text-xs italic">{ex.notes}</p>
+                        </div>
+                      )}
                       <div className="grid grid-cols-[1.5rem_1fr_1fr_2.75rem] gap-2 text-[10px] text-zinc-500 font-medium px-1 mb-1">
                         <span>#</span>
                         <span className="text-center">Peso (kg)</span>
