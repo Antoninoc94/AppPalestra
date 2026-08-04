@@ -3,6 +3,15 @@ set -e
 
 echo "==> Primo avvio AppPalestra..."
 
+# Controlla che AUTH_SECRET sia presente nel .env
+if [ ! -f .env ] || ! grep -q "AUTH_SECRET=" .env || [ -z "$(grep 'AUTH_SECRET=' .env | cut -d'=' -f2-)" ]; then
+  echo ""
+  echo "ERRORE: AUTH_SECRET mancante nel file .env"
+  echo "Generalo con: echo \"AUTH_SECRET=\$(openssl rand -base64 32)\" >> .env"
+  echo ""
+  exit 1
+fi
+
 echo "==> Pull da GitHub..."
 git pull origin main
 
