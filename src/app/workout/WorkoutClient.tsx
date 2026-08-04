@@ -14,7 +14,7 @@ interface ProgramDay { id: string; name: string; exercises: ProgramExercise[] }
 interface Program { id: string; name: string; days: ProgramDay[] }
 
 interface LogSet { reps: number; weight: number | null; done: boolean }
-interface LogExercise { exerciseId: string; name: string; sets: LogSet[]; targetReps: string; restSeconds: number; notes?: string | null }
+interface LogExercise { exerciseId: string; name: string; sets: LogSet[]; targetReps: string; restSeconds: number; notes?: string | null; logNotes?: string }
 
 interface Props {
   programs: Program[];
@@ -191,6 +191,12 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
             }
           : ex
       )
+    );
+  }
+
+  function updateExerciseLogNotes(exIndex: number, notes: string) {
+    setLogExercises((prev) =>
+      prev.map((ex, i) => i === exIndex ? { ...ex, logNotes: notes } : ex)
     );
   }
 
@@ -399,9 +405,10 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
                   </button>
 
                   {isExpanded && (
-                    <div className="px-4 pb-4 space-y-2">
+                    <div className="px-4 pb-4 space-y-3">
                       {ex.notes && (
-                        <div className="rounded-lg bg-zinc-800/60 px-3 py-2">
+                        <div className="rounded-lg bg-zinc-800/50 border border-zinc-700/50 px-3 py-2">
+                          <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-0.5">Nota scheda</p>
                           <p className="text-zinc-400 text-xs italic">{ex.notes}</p>
                         </div>
                       )}
@@ -463,6 +470,14 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
                           </Button>
                         )}
                       </div>
+
+                      <textarea
+                        value={ex.logNotes ?? ""}
+                        onChange={(e) => updateExerciseLogNotes(exI, e.target.value)}
+                        placeholder="Note esercizio..."
+                        rows={2}
+                        className="w-full rounded-xl border border-zinc-700 bg-zinc-800/60 px-3 py-2 text-xs text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-orange-500 resize-none"
+                      />
                     </div>
                   )}
                 </CardContent>

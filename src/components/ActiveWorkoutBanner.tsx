@@ -1,71 +1,97 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import { Dumbbell, ChevronRight, Timer } from "lucide-react";
 import { formatDuration } from "@/lib/utils";
 
 const storageKey = (userId: string) => `apppalestra-workout-${userId}`;
 
-interface BannerState {
-  dayName: string | null;
-  elapsed: number;
-  done: number;
-  total: number;
-  currentExercise: string | null;
-  restExpiresAt: number | null;
-  restTotal: number;
-}
-
 export function ActiveWorkoutBanner({ userId }: { userId: string }) {
-  const [info, setInfo] = useState<BannerState | null>(null);
+  const [active, setActive] = useState(false);
+  const [dayName, setDayName] = useState<string | null>(null);
+  const [done, setDone] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [elapsed, setElapsed] = useState(0);
+  const [restExpiresAt, setRestExpiresAt] = useState<number | null>(null);
+  const [restTotal, setRestTotal] = useState(90);
   const [restRemaining, setRestRemaining] = useState(0);
+  const initializedRef = useRef(false);
 
-  useEffect(() => {
+  const readStorage = useCallback(() => {
     try {
-      localStorage.removeItem("apppalestra-workout-v1"); // cleanup old shared key
       const raw = localStorage.getItem(storageKey(userId));
-      if (!raw) return;
-      const data = JSON.parse(raw);
-      if (data.phase !== "active") return;
-
-      const logs: Array<{ sets: Array<{ done: boolean }>; name: string }> = data.logExercises ?? [];
-      const done = logs.flatMap((ex) => ex.sets).filter((s) => s.done).length;
-      const total = logs.flatMap((ex) => ex.sets).length;
-      const currentExercise =
-        typeof data.expandedEx === "number" ? (logs[data.expandedEx]?.name ?? null) : null;
-
-      const restExpiresAt: number | null = data.restTimerExpiresAt ?? null;
-      const restTotal: number = data.restTimerTotal ?? 90;
-
-      setInfo({ dayName: data.selectedDayName ?? null, elapsed: data.elapsed ?? 0, done, total, currentExercise, restExpiresAt, restTotal });
-
-      if (restExpiresAt) {
-        const rem = Math.ceil((restExpiresAt - Date.now()) / 1000);
-        setRestRemaining(rem > 0 ? rem : 0);
+      if (!raw) {
+        setActive(false);
+        initializedRef.current = false;
+        return;
       }
-    } catch {}
+      const data = JSON.parse(raw);
+      if (data.phase !== "active") {
+        setActive(false);
+        initializedRef.current = false;
+        return;
+      }
+
+      const logs: Array<{ sets: Array<{ done: boolean }> }> = data.logExercises ?? [];
+      const d = logs.flatMap((ex) => ex.sets).filter((s) => s.done).length;
+      const t = logs.flatMap((ex) => ex.sets).length;
+
+      setActive(true);
+      setDayName(data.selectedDayName ?? null);
+      setDone(d);
+      setTotal(t);
+
+      // Only sync elapsed from storage on first load — after that the local counter runs
+      if (!initializedRef.current) {
+        setElapsed(data.elapsed ?? 0);
+        initializedRef.current = true;
+      }
+
+      const exp: number | null = data.restTimerExpiresAt ?? null;
+      setRestExpiresAt(exp);
+      setRestTotal(data.restTimerTotal ?? 90);
+      if (exp) {
+        const rem = Math.ceil((exp - Date.now()) / 1000);
+        setRestRemaining(rem > 0 ? rem : 0);
+      } else {
+        setRestRemaining(0);
+      }
+    } catch {
+      setActive(false);
+    }
   }, [userId]);
 
-  // Live countdown for rest timer
+  // Initial read + cleanup old key + poll every 2s to pick up rest timer changes from workout tab
   useEffect(() => {
-    if (!info?.restExpiresAt) return;
+    localStorage.removeItem("apppalestra-workout-v1");
+    readStorage();
+    const iv = setInterval(readStorage, 2000);
+    return () => clearInterval(iv);
+  }, [readStorage]);
+
+  // Live elapsed counter — starts once workout is active, independent of polling
+  useEffect(() => {
+    if (!active) return;
+    const iv = setInterval(() => setElapsed((e) => e + 1), 1000);
+    return () => clearInterval(iv);
+  }, [active]);
+
+  // Live rest countdown — tied to restExpiresAt timestamp so it's always accurate
+  useEffect(() => {
+    if (!restExpiresAt) return;
     const iv = setInterval(() => {
-      const rem = Math.ceil((info.restExpiresAt! - Date.now()) / 1000);
-      if (rem <= 0) {
-        setRestRemaining(0);
-        setInfo((prev) => (prev ? { ...prev, restExpiresAt: null } : null));
-      } else {
-        setRestRemaining(rem);
-      }
+      const rem = Math.ceil((restExpiresAt - Date.now()) / 1000);
+      setRestRemaining(rem > 0 ? rem : 0);
+      if (rem <= 0) setRestExpiresAt(null);
     }, 500);
     return () => clearInterval(iv);
-  }, [info?.restExpiresAt]);
+  }, [restExpiresAt]);
 
-  if (!info) return null;
+  if (!active) return null;
 
-  const hasRest = !!info.restExpiresAt && restRemaining > 0;
-  const restPct = hasRest ? Math.min(100, (restRemaining / info.restTotal) * 100) : 0;
+  const hasRest = !!restExpiresAt && restRemaining > 0;
+  const restPct = hasRest ? Math.min(100, (restRemaining / restTotal) * 100) : 0;
 
   return (
     <Link href="/workout">
@@ -76,7 +102,7 @@ export function ActiveWorkoutBanner({ userId }: { userId: string }) {
             : "border-orange-500/30 bg-orange-500/5"
         }`}
       >
-        {/* Top row — always visible */}
+        {/* Riga principale */}
         <div className="flex items-center gap-3 px-4 py-3">
           <div className={`rounded-xl p-2.5 shrink-0 ${hasRest ? "bg-orange-500" : "bg-orange-500/80"}`}>
             {hasRest
@@ -86,13 +112,13 @@ export function ActiveWorkoutBanner({ userId }: { userId: string }) {
           <div className="flex-1 min-w-0">
             <p className="font-semibold text-sm text-orange-100">Allenamento in corso</p>
             <p className="text-orange-300/70 text-xs mt-0.5 truncate">
-              {info.dayName ?? "Allenamento libero"} · {info.done}/{info.total} serie · {formatDuration(info.elapsed)}
+              {dayName ?? "Allenamento libero"} · {done}/{total} serie · {formatDuration(elapsed)}
             </p>
           </div>
           <ChevronRight className="h-4 w-4 text-orange-400 shrink-0" />
         </div>
 
-        {/* Rest timer — shown only when active */}
+        {/* Timer recupero — visibile solo quando attivo */}
         {hasRest && (
           <div className="px-4 pb-4 space-y-2">
             <div className="flex items-end justify-between">
