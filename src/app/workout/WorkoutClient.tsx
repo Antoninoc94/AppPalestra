@@ -449,8 +449,8 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
 
         {/* Modal crea scheda */}
         {showCreateProgram && (
-          <div className="fixed inset-0 z-50 bg-black/70 flex items-end sm:items-center justify-center sm:p-4">
-            <div className="w-full max-w-lg bg-zinc-900 border-t sm:border border-zinc-800 rounded-t-2xl sm:rounded-2xl p-6 space-y-5 max-h-[85dvh] overflow-y-auto">
+          <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
+            <div className="w-full max-w-lg bg-zinc-900 border border-zinc-800 rounded-2xl p-6 space-y-5 max-h-[85dvh] overflow-y-auto">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="font-bold text-lg text-left">Crea scheda</h3>
@@ -596,8 +596,8 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
 
         {/* Modal crea scheda (disponibile anche dalla select dopo navigazione) */}
         {showCreateProgram && pendingDone && (
-          <div className="fixed inset-0 z-50 bg-black/70 flex items-end sm:items-center justify-center sm:p-4">
-            <div className="w-full max-w-lg bg-zinc-900 border-t sm:border border-zinc-800 rounded-t-2xl sm:rounded-2xl p-6 space-y-5 max-h-[85dvh] overflow-y-auto">
+          <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
+            <div className="w-full max-w-lg bg-zinc-900 border border-zinc-800 rounded-2xl p-6 space-y-5 max-h-[85dvh] overflow-y-auto">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="font-bold text-lg">Crea scheda</h3>
