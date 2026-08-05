@@ -19,7 +19,7 @@ export function ExerciseInfoSheet({ exercise, onClose }: Props) {
   if (!exercise) return null;
 
   const steps = exercise.description
-    ? exercise.description.split("\n").filter(Boolean)
+    ? exercise.description.split(/\n|\s*\|\s*/).filter(Boolean)
     : [];
 
   return (
