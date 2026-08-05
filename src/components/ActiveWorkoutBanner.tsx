@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
-import { Dumbbell, ChevronRight, Timer } from "lucide-react";
+import { Dumbbell, ChevronRight, Timer, X } from "lucide-react";
 import { formatDuration } from "@/lib/utils";
 
 const storageKey = (userId: string) => `apppalestra-workout-${userId}`;
@@ -88,6 +88,15 @@ export function ActiveWorkoutBanner({ userId }: { userId: string }) {
     return () => clearInterval(iv);
   }, [restExpiresAt]);
 
+  function dismiss(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    try { localStorage.removeItem(storageKey(userId)); } catch {}
+    fetch("/api/workout/draft", { method: "DELETE" }).catch(() => {});
+    setActive(false);
+    initializedRef.current = false;
+  }
+
   if (!active) return null;
 
   const hasRest = !!restExpiresAt && restRemaining > 0;
@@ -115,6 +124,13 @@ export function ActiveWorkoutBanner({ userId }: { userId: string }) {
               {dayName ?? "Allenamento libero"} · {done}/{total} serie · {formatDuration(elapsed)}
             </p>
           </div>
+          <button
+            onClick={dismiss}
+            className="shrink-0 p-1 text-orange-400/60 hover:text-orange-300 transition-colors"
+            aria-label="Chiudi"
+          >
+            <X className="h-4 w-4" />
+          </button>
           <ChevronRight className="h-4 w-4 text-orange-400 shrink-0" />
         </div>
 

@@ -86,11 +86,16 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
 
   function restoreFromData(data: { phase: string; selectedDayId?: string; selectedDayName?: string; logExercises?: typeof logExercises; elapsed?: number; sessionNotes?: string; expandedEx?: number | null; restTimerExpiresAt?: number | null; restTimerTotal?: number }) {
     if (data.phase !== "active") return false;
+    const exercises = data.logExercises ?? [];
+    if (exercises.length === 0) {
+      clearWorkoutStorage();
+      return false;
+    }
     const day = data.selectedDayId
       ? programs.flatMap((p) => p.days).find((d) => d.id === data.selectedDayId) ?? null
       : null;
     setSelectedDay(day);
-    setLogExercises(data.logExercises ?? []);
+    setLogExercises(exercises);
     setElapsed(data.elapsed ?? 0);
     setSessionNotes(data.sessionNotes ?? "");
     setExpandedEx(data.expandedEx ?? 0);
