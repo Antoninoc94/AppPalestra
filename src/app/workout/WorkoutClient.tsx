@@ -31,6 +31,8 @@ interface Props {
 }
 
 const storageKey = (userId: string) => `apppalestra-workout-${userId}`;
+const doneKey = (userId: string) => `apppalestra-done-${userId}`;
+const GOALS = ["strength", "hypertrophy", "endurance", "weight_loss", "general"];
 
 export function WorkoutClient({ programs, allExercises, userId }: Props & { userId: string }) {
   const router = useRouter();
@@ -56,6 +58,7 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
   const [creatingProgram, setCreatingProgram] = useState(false);
   const [createProgramError, setCreateProgramError] = useState<string | null>(null);
   const doneExercisesRef = useRef<typeof logExercises>([]);
+  const [pendingDone, setPendingDone] = useState<{ exercises: typeof logExercises; completedSets: number; duration: number } | null>(null);
 
   function clearWorkoutStorage() {
     if (serverSyncRef.current) { clearTimeout(serverSyncRef.current); serverSyncRef.current = null; }
@@ -132,6 +135,20 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
         if (res.ok) {
           const data = await res.json();
           if (data) restoreFromData(data);
+        }
+      } catch {}
+
+      // Controlla se c'è un allenamento libero appena completato (max 24h fa)
+      try {
+        const raw = localStorage.getItem(doneKey(userId));
+        if (raw) {
+          const rec = JSON.parse(raw);
+          if (rec.at && Date.now() - rec.at < 24 * 60 * 60 * 1000 && rec.exercises?.length > 0) {
+            doneExercisesRef.current = rec.exercises;
+            setPendingDone({ exercises: rec.exercises, completedSets: rec.completedSets, duration: rec.duration });
+          } else {
+            localStorage.removeItem(doneKey(userId));
+          }
         }
       } catch {}
     }
@@ -312,9 +329,24 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
     });
 
     doneExercisesRef.current = logExercises;
+    if (!selectedDay) {
+      try {
+        localStorage.setItem(doneKey(userId), JSON.stringify({
+          exercises: logExercises,
+          completedSets: allSets.length,
+          duration: elapsed,
+          at: Date.now(),
+        }));
+      } catch {}
+    }
     clearWorkoutStorage();
     setSaving(false);
     setPhase("done");
+  }
+
+  function dismissPendingDone() {
+    try { localStorage.removeItem(doneKey(userId)); } catch {}
+    setPendingDone(null);
   }
 
   async function createProgramFromWorkout() {
@@ -322,9 +354,10 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
     setCreatingProgram(true);
     setCreateProgramError(null);
     try {
-      const exercises = doneExercisesRef.current.map((ex, order) => {
-        const doneSets = ex.sets.filter((s) => s.done);
-        const setCount = doneSets.length > 0 ? doneSets.length : ex.sets.length;
+      const source = doneExercisesRef.current.length > 0 ? doneExercisesRef.current : (pendingDone?.exercises ?? []);
+      const exercises = source.map((ex, order) => {
+        const doneSets = (ex.sets ?? []).filter((s) => s.done);
+        const setCount = doneSets.length > 0 ? doneSets.length : (ex.sets?.length ?? 1);
         const lastWeight = [...doneSets].reverse().find((s) => s.weight != null)?.weight ?? null;
         return {
           exerciseId: ex.exerciseId,
@@ -346,6 +379,8 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
         }),
       });
       if (res.ok) {
+        try { localStorage.removeItem(doneKey(userId)); } catch {}
+        setPendingDone(null);
         router.push("/programs");
       } else {
         const data = await res.json().catch(() => ({}));
@@ -372,7 +407,7 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
   // ── DONE ─────────────────────────────────────────────────────────────────
   if (phase === "done") {
     const wasFreestyle = !selectedDay && doneExercisesRef.current.length > 0;
-    const GOALS = ["strength", "hypertrophy", "endurance", "weight_loss", "general"];
+    const modalExercises = doneExercisesRef.current.length > 0 ? doneExercisesRef.current : (pendingDone?.exercises ?? []);
     return (
       <div className="px-4 py-16 text-center space-y-6">
         <div className="rounded-full bg-green-500/10 p-6 w-24 h-24 mx-auto flex items-center justify-center">
@@ -405,7 +440,7 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
                 <div>
                   <h3 className="font-bold text-lg text-left">Crea scheda</h3>
                   <p className="text-zinc-400 text-sm text-left mt-0.5">
-                    {doneExercisesRef.current.length} esercizi · {completedSets} serie completate
+                    {modalExercises.length} esercizi
                   </p>
                 </div>
                 <button onClick={() => setShowCreateProgram(false)} className="text-zinc-500 hover:text-zinc-300 p-1">
@@ -444,8 +479,8 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
 
               <div className="text-left rounded-xl border border-zinc-800 bg-zinc-800/40 px-4 py-3 space-y-1">
                 <p className="text-xs font-semibold text-zinc-400 mb-2">Esercizi inclusi</p>
-                {doneExercisesRef.current.map((ex, i) => {
-                  const doneSets = ex.sets.filter((s) => s.done).length;
+                {modalExercises.map((ex, i) => {
+                  const doneSets = (ex.sets ?? []).filter((s) => s.done).length;
                   return (
                     <p key={i} className="text-sm text-zinc-300 flex items-center justify-between">
                       <span className="truncate">{ex.name}</span>
@@ -479,6 +514,30 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
     return (
       <div className="px-4 py-6 space-y-6">
         <h1 className="text-xl font-bold">Inizia allenamento</h1>
+
+        {/* Suggerimento crea scheda da allenamento recente */}
+        {pendingDone && (
+          <div className="rounded-2xl border border-orange-500/30 bg-orange-500/5 p-4 space-y-3">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="font-semibold text-sm text-orange-100">Crea scheda dall&apos;ultimo allenamento</p>
+                <p className="text-orange-300/60 text-xs mt-0.5">
+                  {pendingDone.exercises.length} esercizi · {pendingDone.completedSets} serie
+                </p>
+              </div>
+              <button onClick={dismissPendingDone} className="text-orange-400/50 hover:text-orange-300 shrink-0 p-0.5">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <button
+              onClick={() => { setShowCreateProgram(true); setNewProgramName(""); setCreateProgramError(null); }}
+              className="w-full flex items-center justify-center gap-2 rounded-xl bg-orange-500 py-2.5 text-sm font-semibold text-white active:opacity-80"
+            >
+              <BookmarkPlus className="h-4 w-4" />
+              Crea scheda
+            </button>
+          </div>
+        )}
 
         <button
           onClick={startFreeWorkout}
@@ -517,6 +576,62 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
                 ))}
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Modal crea scheda (disponibile anche dalla select dopo navigazione) */}
+        {showCreateProgram && pendingDone && (
+          <div className="fixed inset-0 z-50 bg-black/70 flex items-end justify-center">
+            <div className="w-full max-w-lg bg-zinc-900 border-t border-zinc-800 rounded-t-2xl p-6 space-y-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-bold text-lg">Crea scheda</h3>
+                  <p className="text-zinc-400 text-sm mt-0.5">{pendingDone.exercises.length} esercizi</p>
+                </div>
+                <button onClick={() => setShowCreateProgram(false)} className="text-zinc-500 hover:text-zinc-300 p-1">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-zinc-400 block">Nome scheda *</label>
+                <input
+                  type="text"
+                  value={newProgramName}
+                  onChange={(e) => setNewProgramName(e.target.value)}
+                  placeholder="es. Full Body, Push Day..."
+                  autoFocus
+                  className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-3 text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-orange-500 focus:outline-none"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-zinc-400 block">Obiettivo</label>
+                <div className="flex flex-wrap gap-2">
+                  {GOALS.map((g) => (
+                    <button key={g} onClick={() => setNewProgramGoal(g)}
+                      className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${newProgramGoal === g ? "bg-orange-500 text-white" : "bg-zinc-800 text-zinc-300"}`}>
+                      {getGoalLabel(g)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="rounded-xl border border-zinc-800 bg-zinc-800/40 px-4 py-3 space-y-1">
+                <p className="text-xs font-semibold text-zinc-400 mb-2">Esercizi inclusi</p>
+                {pendingDone.exercises.map((ex, i) => {
+                  const doneSets = (ex.sets ?? []).filter((s) => s.done).length;
+                  return (
+                    <p key={i} className="text-sm text-zinc-300 flex items-center justify-between">
+                      <span className="truncate">{ex.name}</span>
+                      <span className="text-zinc-500 text-xs shrink-0 ml-2">{doneSets} serie</span>
+                    </p>
+                  );
+                })}
+              </div>
+              {createProgramError && <p className="text-sm text-red-400">{createProgramError}</p>}
+              <Button className="w-full gap-2" disabled={!newProgramName.trim() || creatingProgram} onClick={createProgramFromWorkout}>
+                <BookmarkPlus className="h-4 w-4" />
+                {creatingProgram ? "Salvataggio..." : "Salva scheda"}
+              </Button>
+            </div>
           </div>
         )}
       </div>
