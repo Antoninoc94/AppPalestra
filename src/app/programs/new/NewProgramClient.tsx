@@ -411,7 +411,9 @@ export function NewProgramClient({ muscleGroups, equipment, exercises }: Props) 
           {generatedDays.length > 0 && (
             <div className="space-y-3">
               <p className="text-sm font-semibold text-zinc-300">Scheda generata:</p>
-              {generatedDays[0].exercises.map((ex, i) => (
+              {generatedDays[0].exercises.map((ex, i) => {
+                const stepCls = "w-8 h-8 flex items-center justify-center text-zinc-300 text-sm font-medium active:bg-zinc-700 shrink-0 select-none transition-colors hover:bg-zinc-700";
+                return (
                 <Card key={i}>
                   <CardContent className="p-3 space-y-3">
                     <div className="flex items-center justify-between gap-2">
@@ -429,31 +431,45 @@ export function NewProgramClient({ muscleGroups, equipment, exercises }: Props) 
                         </button>
                       </div>
                     </div>
-                    <div className="grid grid-cols-3 gap-2">
+
+                    <div className="grid grid-cols-2 gap-2">
+                      {/* Serie */}
                       <div>
                         <label className="text-[10px] text-zinc-500 block mb-1">Serie</label>
-                        <input type="number" value={ex.sets}
-                          onChange={(e) => updateGeneratedExercise(i, "sets", parseInt(e.target.value))}
-                          className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-2 py-1.5 text-sm text-center focus:outline-none focus:border-orange-500"
-                          min={1} max={10} />
+                        <div className="flex items-center rounded-lg overflow-hidden border border-zinc-700 bg-zinc-800">
+                          <button type="button" className={stepCls} onClick={() => updateGeneratedExercise(i, "sets", Math.max(1, ex.sets - 1))}>−</button>
+                          <input type="number" value={ex.sets}
+                            onChange={(e) => updateGeneratedExercise(i, "sets", Math.max(1, parseInt(e.target.value) || 1))}
+                            className="flex-1 min-w-0 bg-transparent text-sm text-center py-1.5 focus:outline-none text-zinc-100"
+                            min={1} max={10} />
+                          <button type="button" className={stepCls} onClick={() => updateGeneratedExercise(i, "sets", Math.min(10, ex.sets + 1))}>+</button>
+                        </div>
                       </div>
+                      {/* Reps (string like "12-15") */}
                       <div>
                         <label className="text-[10px] text-zinc-500 block mb-1">Reps</label>
                         <input type="text" value={ex.reps}
                           onChange={(e) => updateGeneratedExercise(i, "reps", e.target.value)}
-                          className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-2 py-1.5 text-sm text-center focus:outline-none focus:border-orange-500" />
+                          className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-2 py-1.5 text-sm text-center focus:outline-none focus:border-orange-500 text-zinc-100 h-8" />
                       </div>
-                      <div>
-                        <label className="text-[10px] text-zinc-500 block mb-1">Recupero (s)</label>
+                    </div>
+
+                    {/* Recupero */}
+                    <div>
+                      <label className="text-[10px] text-zinc-500 block mb-1">Recupero (s)</label>
+                      <div className="flex items-center rounded-lg overflow-hidden border border-zinc-700 bg-zinc-800">
+                        <button type="button" className={`${stepCls} px-3 text-xs`} onClick={() => updateGeneratedExercise(i, "restSeconds", Math.max(0, ex.restSeconds - 15))}>−15</button>
                         <input type="number" value={ex.restSeconds}
-                          onChange={(e) => updateGeneratedExercise(i, "restSeconds", parseInt(e.target.value))}
-                          className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-2 py-1.5 text-sm text-center focus:outline-none focus:border-orange-500"
+                          onChange={(e) => updateGeneratedExercise(i, "restSeconds", Math.max(0, parseInt(e.target.value) || 0))}
+                          className="flex-1 min-w-0 bg-transparent text-sm text-center py-1.5 focus:outline-none text-zinc-100"
                           step={15} />
+                        <button type="button" className={`${stepCls} px-3 text-xs`} onClick={() => updateGeneratedExercise(i, "restSeconds", ex.restSeconds + 15)}>+15</button>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+                );
+              })}
               <Button className="w-full" onClick={useGeneratedDays} disabled={generatedDays[0].exercises.length === 0}>
                 Usa questa scheda
               </Button>
@@ -563,7 +579,9 @@ export function NewProgramClient({ muscleGroups, equipment, exercises }: Props) 
                 )}
               </div>
 
-              {days[activeDayIndex].exercises.map((ex, exI) => (
+              {days[activeDayIndex].exercises.map((ex, exI) => {
+                const stepCls = "w-8 h-8 flex items-center justify-center text-zinc-300 text-sm font-medium active:bg-zinc-700 shrink-0 select-none transition-colors hover:bg-zinc-700";
+                return (
                 <Card key={exI}>
                   <CardContent className="p-3 space-y-3">
                     <div className="flex items-center justify-between">
@@ -581,35 +599,39 @@ export function NewProgramClient({ muscleGroups, equipment, exercises }: Props) 
                         <X className="h-4 w-4 text-zinc-500 hover:text-red-400" />
                       </button>
                     </div>
-                    <div className="grid grid-cols-3 gap-2">
+
+                    <div className="grid grid-cols-2 gap-2">
+                      {/* Serie */}
                       <div>
                         <label className="text-[10px] text-zinc-500 block mb-1">Serie</label>
-                        <input
-                          type="number"
-                          value={ex.sets}
-                          onChange={(e) => updateExercise(activeDayIndex, exI, "sets", parseInt(e.target.value))}
-                          className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-2 py-1.5 text-sm text-center focus:outline-none focus:border-orange-500"
-                          min={1} max={10}
-                        />
+                        <div className="flex items-center rounded-lg overflow-hidden border border-zinc-700 bg-zinc-800">
+                          <button type="button" className={stepCls} onClick={() => updateExercise(activeDayIndex, exI, "sets", Math.max(1, ex.sets - 1))}>−</button>
+                          <input type="number" value={ex.sets}
+                            onChange={(e) => updateExercise(activeDayIndex, exI, "sets", Math.max(1, parseInt(e.target.value) || 1))}
+                            className="flex-1 min-w-0 bg-transparent text-sm text-center py-1.5 focus:outline-none text-zinc-100"
+                            min={1} max={10} />
+                          <button type="button" className={stepCls} onClick={() => updateExercise(activeDayIndex, exI, "sets", Math.min(10, ex.sets + 1))}>+</button>
+                        </div>
                       </div>
+                      {/* Reps */}
                       <div>
                         <label className="text-[10px] text-zinc-500 block mb-1">Reps</label>
-                        <input
-                          type="text"
-                          value={ex.reps}
+                        <input type="text" value={ex.reps}
                           onChange={(e) => updateExercise(activeDayIndex, exI, "reps", e.target.value)}
-                          className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-2 py-1.5 text-sm text-center focus:outline-none focus:border-orange-500"
-                        />
+                          className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-2 py-1.5 text-sm text-center focus:outline-none focus:border-orange-500 text-zinc-100 h-8" />
                       </div>
-                      <div>
-                        <label className="text-[10px] text-zinc-500 block mb-1">Recupero (s)</label>
-                        <input
-                          type="number"
-                          value={ex.restSeconds}
-                          onChange={(e) => updateExercise(activeDayIndex, exI, "restSeconds", parseInt(e.target.value))}
-                          className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-2 py-1.5 text-sm text-center focus:outline-none focus:border-orange-500"
-                          step={15}
-                        />
+                    </div>
+
+                    {/* Recupero */}
+                    <div>
+                      <label className="text-[10px] text-zinc-500 block mb-1">Recupero (s)</label>
+                      <div className="flex items-center rounded-lg overflow-hidden border border-zinc-700 bg-zinc-800">
+                        <button type="button" className={`${stepCls} px-3 text-xs`} onClick={() => updateExercise(activeDayIndex, exI, "restSeconds", Math.max(0, ex.restSeconds - 15))}>−15</button>
+                        <input type="number" value={ex.restSeconds}
+                          onChange={(e) => updateExercise(activeDayIndex, exI, "restSeconds", Math.max(0, parseInt(e.target.value) || 0))}
+                          className="flex-1 min-w-0 bg-transparent text-sm text-center py-1.5 focus:outline-none text-zinc-100"
+                          step={15} />
+                        <button type="button" className={`${stepCls} px-3 text-xs`} onClick={() => updateExercise(activeDayIndex, exI, "restSeconds", ex.restSeconds + 15)}>+15</button>
                       </div>
                     </div>
                     <div>
