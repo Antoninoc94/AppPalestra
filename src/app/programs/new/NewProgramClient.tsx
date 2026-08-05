@@ -308,7 +308,14 @@ export function NewProgramClient({ muscleGroups, equipment, exercises }: Props) 
           <Button
             className="w-full"
             disabled={!name.trim()}
-            onClick={() => setStep(mode === "generate" ? "generate" : "days")}
+            onClick={() => {
+              if (mode === "generate") {
+                setGenGoal(goal);
+                setStep("generate");
+              } else {
+                setStep("days");
+              }
+            }}
           >
             Continua
           </Button>
