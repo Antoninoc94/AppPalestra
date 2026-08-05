@@ -9,12 +9,30 @@ export default async function ProgressPage() {
   if (!session?.user) redirect("/login");
   const userId = session.user.id;
 
-  const [exercises, recentSessions] = await Promise.all([
-    prisma.exercise.findMany({
-      where: { OR: [{ isCustom: false }, { isCustom: true, userId }] },
-      select: { id: true, name: true, nameIt: true },
-      orderBy: { nameIt: "asc" },
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const [
+    loggedExerciseRows,
+    prStats,
+    totalSessions,
+    sessionsThisMonth,
+    totalSets,
+    recentSessions,
+  ] = await Promise.all([
+    prisma.workoutSet.findMany({
+      where: { session: { userId } },
+      select: { exerciseId: true },
+      distinct: ["exerciseId"],
     }),
+    prisma.workoutSet.groupBy({
+      by: ["exerciseId"],
+      where: { session: { userId }, weight: { not: null } },
+      _max: { weight: true },
+    }),
+    prisma.workoutSession.count({ where: { userId } }),
+    prisma.workoutSession.count({ where: { userId, date: { gte: startOfMonth } } }),
+    prisma.workoutSet.count({ where: { session: { userId } } }),
     prisma.workoutSession.findMany({
       where: { userId },
       take: 10,
@@ -26,5 +44,29 @@ export default async function ProgressPage() {
     }),
   ]);
 
-  return <ProgressClient exercises={exercises} recentSessions={recentSessions} />;
+  const exerciseIds = loggedExerciseRows.map((r) => r.exerciseId);
+
+  const exercises = await prisma.exercise.findMany({
+    where: { id: { in: exerciseIds } },
+    select: { id: true, name: true, nameIt: true },
+    orderBy: { nameIt: "asc" },
+  });
+
+  const prMap: Record<string, number> = {};
+  for (const pr of prStats) {
+    if (pr._max.weight != null) prMap[pr.exerciseId] = pr._max.weight;
+  }
+
+  const exercisesWithPR = exercises.map((ex) => ({
+    ...ex,
+    bestWeight: prMap[ex.id] ?? null,
+  }));
+
+  return (
+    <ProgressClient
+      exercises={exercisesWithPR}
+      recentSessions={recentSessions}
+      stats={{ totalSessions, sessionsThisMonth, totalSets }}
+    />
+  );
 }
