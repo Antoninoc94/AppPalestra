@@ -422,33 +422,35 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
     const wasFreestyle = !selectedDay && doneExercisesRef.current.length > 0;
     const modalExercises = doneExercisesRef.current.length > 0 ? doneExercisesRef.current : (pendingDone?.exercises ?? []);
     return (
-      <div className="px-4 py-16 text-center space-y-6">
-        <div className="rounded-full bg-green-500/10 p-6 w-24 h-24 mx-auto flex items-center justify-center">
-          <Flag className="h-10 w-10 text-green-400" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold">Ottimo lavoro!</h1>
-          <p className="text-zinc-400 mt-2">{completedSets} serie completate in {formatDuration(elapsed)}</p>
-        </div>
-        <Button className="w-full" onClick={() => router.push("/")}>Torna alla home</Button>
-        {wasFreestyle && (
-          <Button
-            variant="outline"
-            className="w-full gap-2"
-            onClick={() => { setShowCreateProgram(true); setNewProgramName(""); setCreateProgramError(null); }}
-          >
-            <BookmarkPlus className="h-4 w-4" />
-            Crea scheda da questo allenamento
+      <div className="min-h-[calc(100dvh-5rem)] flex flex-col items-center justify-center px-4 py-8">
+        <div className="w-full max-w-sm space-y-4 text-center">
+          <div className="rounded-full bg-green-500/10 p-6 w-24 h-24 mx-auto flex items-center justify-center">
+            <Flag className="h-10 w-10 text-green-400" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold">Ottimo lavoro!</h1>
+            <p className="text-zinc-400 mt-2">{completedSets} serie completate in {formatDuration(elapsed)}</p>
+          </div>
+          <Button className="w-full" onClick={() => router.push("/")}>Torna alla home</Button>
+          {wasFreestyle && (
+            <Button
+              variant="outline"
+              className="w-full gap-2"
+              onClick={() => { setShowCreateProgram(true); setNewProgramName(""); setCreateProgramError(null); }}
+            >
+              <BookmarkPlus className="h-4 w-4" />
+              Crea scheda da questo allenamento
+            </Button>
+          )}
+          <Button variant="ghost" className="w-full" onClick={() => { setPhase("select"); setElapsed(0); setSessionNotes(""); }}>
+            Nuovo allenamento
           </Button>
-        )}
-        <Button variant="ghost" className="w-full" onClick={() => { setPhase("select"); setElapsed(0); setSessionNotes(""); }}>
-          Nuovo allenamento
-        </Button>
+        </div>
 
         {/* Modal crea scheda */}
         {showCreateProgram && (
-          <div className="fixed inset-0 z-50 bg-black/70 flex items-end justify-center">
-            <div className="w-full max-w-lg bg-zinc-900 border-t border-zinc-800 rounded-t-2xl p-6 space-y-5">
+          <div className="fixed inset-0 z-50 bg-black/70 flex items-end sm:items-center justify-center sm:p-4">
+            <div className="w-full max-w-lg bg-zinc-900 border-t sm:border border-zinc-800 rounded-t-2xl sm:rounded-2xl p-6 space-y-5 max-h-[85dvh] overflow-y-auto">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="font-bold text-lg text-left">Crea scheda</h3>
@@ -594,8 +596,8 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
 
         {/* Modal crea scheda (disponibile anche dalla select dopo navigazione) */}
         {showCreateProgram && pendingDone && (
-          <div className="fixed inset-0 z-50 bg-black/70 flex items-end justify-center">
-            <div className="w-full max-w-lg bg-zinc-900 border-t border-zinc-800 rounded-t-2xl p-6 space-y-5">
+          <div className="fixed inset-0 z-50 bg-black/70 flex items-end sm:items-center justify-center sm:p-4">
+            <div className="w-full max-w-lg bg-zinc-900 border-t sm:border border-zinc-800 rounded-t-2xl sm:rounded-2xl p-6 space-y-5 max-h-[85dvh] overflow-y-auto">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="font-bold text-lg">Crea scheda</h3>
