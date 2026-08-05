@@ -35,13 +35,18 @@ export async function POST(req: NextRequest) {
     return result;
   }
 
-  const header = parseLine(lines[0]).map((h) => h.toLowerCase().replace(/[^a-z]/g, ""));
-  const colNomeIt    = header.indexOf("nomitaliano");
-  const colNomeEn   = header.indexOf("nominglese");
-  const colDesc     = header.indexOf("descrizione");
+  // Strip BOM if present
+  const rawHeader = lines[0].replace(/^﻿/, "");
+  const header = parseLine(rawHeader).map((h) => h.toLowerCase().replace(/[^a-z]/g, ""));
+
+  // "Nome inglese" → "nomeinglese", "Nome italiano" → "nomeitaliano"
+  const colNomeEn = header.findIndex((h) => h === "nomeinglese" || h === "nominglese" || h === "english" || h === "nameenglish");
+  const colNomeIt = header.findIndex((h) => h === "nomeitaliano" || h === "nomitaliano" || h === "italian" || h === "nameitalian");
+  const colDesc   = header.findIndex((h) => h === "descrizione" || h === "description");
 
   if (colNomeEn === -1) {
-    return NextResponse.json({ error: "Colonna 'Nome inglese' non trovata" }, { status: 400 });
+    const found = header.join(", ");
+    return NextResponse.json({ error: `Colonna 'Nome inglese' non trovata. Colonne rilevate: ${found}` }, { status: 400 });
   }
 
   let updated = 0;
