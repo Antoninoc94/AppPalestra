@@ -5,10 +5,10 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, X, Check, Timer, ChevronDown, ChevronUp, Dumbbell, Flag, AlertTriangle, Filter, Info } from "lucide-react";
+import { Plus, X, Check, Timer, ChevronDown, ChevronUp, Dumbbell, Flag, AlertTriangle, Filter, Info, BookmarkPlus } from "lucide-react";
 import { ExerciseInfoSheet } from "@/components/ExerciseInfoSheet";
 import type { ExerciseWithRelations } from "@/types";
-import { formatDuration } from "@/lib/utils";
+import { formatDuration, getGoalLabel } from "@/lib/utils";
 
 interface MinExercise { id: string; name: string; nameIt: string | null; primaryMuscle: { nameIt: string } }
 interface PickerExercise {
@@ -50,6 +50,12 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
   const [noSetsError, setNoSetsError] = useState(false);
   const [muscleFilter, setMuscleFilter] = useState("");
   const [infoExercise, setInfoExercise] = useState<ExerciseWithRelations | null>(null);
+  const [showCreateProgram, setShowCreateProgram] = useState(false);
+  const [newProgramName, setNewProgramName] = useState("");
+  const [newProgramGoal, setNewProgramGoal] = useState("general");
+  const [creatingProgram, setCreatingProgram] = useState(false);
+  const [createProgramError, setCreateProgramError] = useState<string | null>(null);
+  const doneExercisesRef = useRef<typeof logExercises>([]);
 
   function clearWorkoutStorage() {
     if (serverSyncRef.current) { clearTimeout(serverSyncRef.current); serverSyncRef.current = null; }
@@ -305,9 +311,51 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
       }),
     });
 
+    doneExercisesRef.current = logExercises;
     clearWorkoutStorage();
     setSaving(false);
     setPhase("done");
+  }
+
+  async function createProgramFromWorkout() {
+    if (!newProgramName.trim()) return;
+    setCreatingProgram(true);
+    setCreateProgramError(null);
+    try {
+      const exercises = doneExercisesRef.current.map((ex, order) => {
+        const doneSets = ex.sets.filter((s) => s.done);
+        const setCount = doneSets.length > 0 ? doneSets.length : ex.sets.length;
+        const lastWeight = [...doneSets].reverse().find((s) => s.weight != null)?.weight ?? null;
+        return {
+          exerciseId: ex.exerciseId,
+          order,
+          sets: setCount,
+          reps: ex.targetReps,
+          restSeconds: ex.restSeconds,
+          weight: lastWeight,
+          notes: ex.logNotes || null,
+        };
+      });
+      const res = await fetch("/api/programs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newProgramName.trim(),
+          goal: newProgramGoal,
+          days: [{ name: "Giorno A", dayNumber: 1, exercises }],
+        }),
+      });
+      if (res.ok) {
+        router.push("/programs");
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setCreateProgramError(data.error ?? "Errore durante la creazione");
+      }
+    } catch {
+      setCreateProgramError("Errore di rete, riprova");
+    } finally {
+      setCreatingProgram(false);
+    }
   }
 
   const completedSets = logExercises.flatMap((ex) => ex.sets).filter((s) => s.done).length;
@@ -323,6 +371,8 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
 
   // ── DONE ─────────────────────────────────────────────────────────────────
   if (phase === "done") {
+    const wasFreestyle = !selectedDay && doneExercisesRef.current.length > 0;
+    const GOALS = ["strength", "hypertrophy", "endurance", "weight_loss", "general"];
     return (
       <div className="px-4 py-16 text-center space-y-6">
         <div className="rounded-full bg-green-500/10 p-6 w-24 h-24 mx-auto flex items-center justify-center">
@@ -333,9 +383,93 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
           <p className="text-zinc-400 mt-2">{completedSets} serie completate in {formatDuration(elapsed)}</p>
         </div>
         <Button className="w-full" onClick={() => router.push("/")}>Torna alla home</Button>
-        <Button variant="outline" className="w-full" onClick={() => { setPhase("select"); setElapsed(0); setSessionNotes(""); }}>
+        {wasFreestyle && (
+          <Button
+            variant="outline"
+            className="w-full gap-2"
+            onClick={() => { setShowCreateProgram(true); setNewProgramName(""); setCreateProgramError(null); }}
+          >
+            <BookmarkPlus className="h-4 w-4" />
+            Crea scheda da questo allenamento
+          </Button>
+        )}
+        <Button variant="ghost" className="w-full" onClick={() => { setPhase("select"); setElapsed(0); setSessionNotes(""); }}>
           Nuovo allenamento
         </Button>
+
+        {/* Modal crea scheda */}
+        {showCreateProgram && (
+          <div className="fixed inset-0 z-50 bg-black/70 flex items-end justify-center">
+            <div className="w-full max-w-lg bg-zinc-900 border-t border-zinc-800 rounded-t-2xl p-6 space-y-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-bold text-lg text-left">Crea scheda</h3>
+                  <p className="text-zinc-400 text-sm text-left mt-0.5">
+                    {doneExercisesRef.current.length} esercizi · {completedSets} serie completate
+                  </p>
+                </div>
+                <button onClick={() => setShowCreateProgram(false)} className="text-zinc-500 hover:text-zinc-300 p-1">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="text-left space-y-1">
+                <label className="text-xs font-medium text-zinc-400 block">Nome scheda *</label>
+                <input
+                  type="text"
+                  value={newProgramName}
+                  onChange={(e) => setNewProgramName(e.target.value)}
+                  placeholder="es. Full Body, Push Day..."
+                  autoFocus
+                  className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-3 text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-orange-500 focus:outline-none"
+                />
+              </div>
+
+              <div className="text-left space-y-2">
+                <label className="text-xs font-medium text-zinc-400 block">Obiettivo</label>
+                <div className="flex flex-wrap gap-2">
+                  {GOALS.map((g) => (
+                    <button
+                      key={g}
+                      onClick={() => setNewProgramGoal(g)}
+                      className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                        newProgramGoal === g ? "bg-orange-500 text-white" : "bg-zinc-800 text-zinc-300"
+                      }`}
+                    >
+                      {getGoalLabel(g)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="text-left rounded-xl border border-zinc-800 bg-zinc-800/40 px-4 py-3 space-y-1">
+                <p className="text-xs font-semibold text-zinc-400 mb-2">Esercizi inclusi</p>
+                {doneExercisesRef.current.map((ex, i) => {
+                  const doneSets = ex.sets.filter((s) => s.done).length;
+                  return (
+                    <p key={i} className="text-sm text-zinc-300 flex items-center justify-between">
+                      <span className="truncate">{ex.name}</span>
+                      <span className="text-zinc-500 text-xs shrink-0 ml-2">{doneSets} serie</span>
+                    </p>
+                  );
+                })}
+              </div>
+
+              {createProgramError && (
+                <p className="text-sm text-red-400 text-left">{createProgramError}</p>
+              )}
+
+              <Button
+                className="w-full gap-2"
+                disabled={!newProgramName.trim() || creatingProgram}
+                onClick={createProgramFromWorkout}
+              >
+                <BookmarkPlus className="h-4 w-4" />
+                {creatingProgram ? "Salvataggio..." : "Salva scheda"}
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
