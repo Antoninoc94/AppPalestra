@@ -5,11 +5,20 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, X, Check, Timer, ChevronDown, ChevronUp, Dumbbell, Flag, AlertTriangle, Filter } from "lucide-react";
+import { Plus, X, Check, Timer, ChevronDown, ChevronUp, Dumbbell, Flag, AlertTriangle, Filter, Info } from "lucide-react";
+import { ExerciseInfoSheet } from "@/components/ExerciseInfoSheet";
+import type { ExerciseWithRelations } from "@/types";
 import { formatDuration } from "@/lib/utils";
 
-interface Exercise { id: string; name: string; nameIt: string | null; primaryMuscle: { nameIt: string } }
-interface ProgramExercise { exerciseId: string; exercise: Exercise; sets: number; reps: string; restSeconds: number; weight: number | null; notes: string | null }
+interface MinExercise { id: string; name: string; nameIt: string | null; primaryMuscle: { nameIt: string } }
+interface PickerExercise {
+  id: string; name: string; nameIt: string | null; description: string | null;
+  primaryMuscle: { id: string; name: string; nameIt: string };
+  secondaryMuscles: string[];
+  equipment: Array<{ equipment: { id: string; name: string; nameIt: string } }>;
+  category: string; difficulty: string; isCustom: boolean;
+}
+interface ProgramExercise { exerciseId: string; exercise: MinExercise; sets: number; reps: string; restSeconds: number; weight: number | null; notes: string | null }
 interface ProgramDay { id: string; name: string; exercises: ProgramExercise[] }
 interface Program { id: string; name: string; days: ProgramDay[] }
 
@@ -18,7 +27,7 @@ interface LogExercise { exerciseId: string; name: string; sets: LogSet[]; target
 
 interface Props {
   programs: Program[];
-  allExercises: Exercise[];
+  allExercises: PickerExercise[];
 }
 
 const storageKey = (userId: string) => `apppalestra-workout-${userId}`;
@@ -40,6 +49,7 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
   const [showAbandonConfirm, setShowAbandonConfirm] = useState(false);
   const [noSetsError, setNoSetsError] = useState(false);
   const [muscleFilter, setMuscleFilter] = useState("");
+  const [infoExercise, setInfoExercise] = useState<ExerciseWithRelations | null>(null);
 
   function clearWorkoutStorage() {
     if (serverSyncRef.current) { clearTimeout(serverSyncRef.current); serverSyncRef.current = null; }
@@ -175,7 +185,7 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
     setPhase("active");
   }
 
-  function addFreeExercise(ex: Exercise) {
+  function addFreeExercise(ex: PickerExercise) {
     setLogExercises((prev) => [
       ...prev,
       {
@@ -611,6 +621,8 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
         </div>
       )}
 
+      <ExerciseInfoSheet exercise={infoExercise} onClose={() => setInfoExercise(null)} />
+
       {/* Exercise picker modal */}
       {showExPicker && (
         <div className="fixed inset-0 z-[60] bg-black/80 flex flex-col justify-end">
@@ -658,14 +670,24 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
                 <p className="text-center text-zinc-500 text-sm py-8">Nessun esercizio trovato</p>
               ) : (
                 filteredFreeEx.map((ex) => (
-                  <button
+                  <div
                     key={ex.id}
-                    onClick={() => addFreeExercise(ex)}
-                    className="w-full text-left rounded-xl border border-zinc-800 bg-zinc-900 p-3 hover:border-orange-500/50 active:bg-zinc-800 transition-colors"
+                    className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900 p-3 hover:border-orange-500/30 transition-colors"
                   >
-                    <p className="font-medium text-sm">{ex.nameIt ?? ex.name}</p>
-                    <p className="text-zinc-400 text-xs mt-0.5">{ex.primaryMuscle.nameIt}</p>
-                  </button>
+                    <button
+                      onClick={() => addFreeExercise(ex)}
+                      className="flex-1 text-left min-w-0"
+                    >
+                      <p className="font-medium text-sm">{ex.nameIt ?? ex.name}</p>
+                      <p className="text-zinc-400 text-xs mt-0.5">{ex.primaryMuscle.nameIt}</p>
+                    </button>
+                    <button
+                      onClick={() => setInfoExercise(ex as ExerciseWithRelations)}
+                      className="shrink-0 p-1.5 text-zinc-500 hover:text-orange-400 transition-colors"
+                    >
+                      <Info className="h-4 w-4" />
+                    </button>
+                  </div>
                 ))
               )}
             </div>

@@ -26,12 +26,12 @@ export function ExerciseInfoSheet({ exercise, onClose }: Props) {
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
+        className="fixed inset-0 z-[90] bg-black/60 backdrop-blur-sm"
         onClick={onClose}
       />
 
       {/* Sheet */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 max-h-[85dvh] overflow-y-auto rounded-t-2xl bg-zinc-900 border-t border-zinc-800">
+      <div className="fixed bottom-0 left-0 right-0 z-[90] max-h-[85dvh] overflow-y-auto rounded-t-2xl bg-zinc-900 border-t border-zinc-800">
         {/* Handle */}
         <div className="flex justify-center pt-3 pb-1">
           <div className="h-1 w-10 rounded-full bg-zinc-700" />

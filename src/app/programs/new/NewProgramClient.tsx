@@ -64,6 +64,7 @@ export function NewProgramClient({ muscleGroups, equipment, exercises }: Props) 
   const [genGoal, setGenGoal] = useState("hypertrophy");
   const [genDifficulty, setGenDifficulty] = useState("intermediate");
   const [genDuration, setGenDuration] = useState(60);
+  const [genEquipmentPref, setGenEquipmentPref] = useState<"bodyweight" | "equipment" | "any">("any");
   const [generating, setGenerating] = useState(false);
   const [generatedDays, setGeneratedDays] = useState<ProgramDay[]>([]);
 
@@ -159,6 +160,7 @@ export function NewProgramClient({ muscleGroups, equipment, exercises }: Props) 
           durationMinutes: genDuration,
           difficulty: genDifficulty,
           equipmentIds: [],
+          equipmentPreference: genEquipmentPref,
         }),
       });
       const data = await res.json();
@@ -370,6 +372,21 @@ export function NewProgramClient({ muscleGroups, equipment, exercises }: Props) 
                 <button key={d} onClick={() => setGenDuration(d)}
                   className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${genDuration === d ? "bg-orange-500 text-white" : "bg-zinc-800 text-zinc-300"}`}>
                   {d}min
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-zinc-400 mb-2 block">Tipologia esercizi</label>
+            <div className="flex gap-2">
+              {([ { value: "any", label: "Tutto" }, { value: "bodyweight", label: "Corpo libero" }, { value: "equipment", label: "Attrezzatura" } ] as const).map(({ value, label }) => (
+                <button
+                  key={value}
+                  onClick={() => setGenEquipmentPref(value)}
+                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${genEquipmentPref === value ? "bg-orange-500 text-white" : "bg-zinc-800 text-zinc-300"}`}
+                >
+                  {label}
                 </button>
               ))}
             </div>

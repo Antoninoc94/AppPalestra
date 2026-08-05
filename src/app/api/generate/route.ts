@@ -27,12 +27,20 @@ function getExerciseCount(durationMinutes: number): number {
   return 8;
 }
 
+function isBodyweight(e: { equipment: Array<{ equipment: { name: string } }> }) {
+  if (e.equipment.length === 0) return true;
+  return e.equipment.every((eq) => {
+    const n = eq.equipment.name.toLowerCase().replace(/[\s_-]/g, "");
+    return n === "bodyweight" || n === "bodyweight";
+  });
+}
+
 export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body: GenerateWorkoutParams = await req.json();
-  const { muscleGroups, goal, durationMinutes, difficulty, equipmentIds } = body;
+  const { muscleGroups, goal, durationMinutes, difficulty, equipmentIds, equipmentPreference = "any" } = body;
 
   const config = goalConfig[goal] ?? goalConfig.general;
   const targetCount = getExerciseCount(durationMinutes);
@@ -65,27 +73,27 @@ export async function POST(req: NextRequest) {
     orderBy: { name: "asc" },
   });
 
-  // Pick exercises: compound first, then isolation
-  const compound = exercises.filter((e) =>
-    ["barbell", "bodyweight"].some((eq) =>
-      e.equipment.some((eq2) => eq2.equipment.name === eq)
-    )
-  );
-  const isolation = exercises.filter((e) => !compound.includes(e));
+  // Filter by equipment preference
+  let pool = exercises;
+  if (equipmentPreference === "bodyweight") {
+    const bw = exercises.filter(isBodyweight);
+    if (bw.length >= 2) pool = bw;
+  } else if (equipmentPreference === "equipment") {
+    const eq = exercises.filter((e) => !isBodyweight(e));
+    if (eq.length >= 2) pool = eq;
+  }
 
-  const selected: typeof exercises = [];
-  const compoundCount = Math.min(Math.ceil(targetCount * 0.4), compound.length);
-  const isolationCount = Math.min(targetCount - compoundCount, isolation.length);
+  // Shuffle and pick targetCount exercises without bias
+  const shuffled = [...pool].sort(() => Math.random() - 0.5);
+  const selected = shuffled.slice(0, targetCount);
 
-  const shuffledCompound = compound.sort(() => Math.random() - 0.5);
-  const shuffledIsolation = isolation.sort(() => Math.random() - 0.5);
-
-  selected.push(...shuffledCompound.slice(0, compoundCount));
-  selected.push(...shuffledIsolation.slice(0, isolationCount));
-
+  // Pad with remaining exercises if the filtered pool was too small
   if (selected.length < targetCount) {
-    const remaining = exercises.filter((e) => !selected.includes(e));
-    selected.push(...remaining.slice(0, targetCount - selected.length));
+    const extra = exercises
+      .filter((e) => !selected.includes(e))
+      .sort(() => Math.random() - 0.5)
+      .slice(0, targetCount - selected.length);
+    selected.push(...extra);
   }
 
   const result = {

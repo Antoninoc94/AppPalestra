@@ -103,4 +103,5 @@ export interface GenerateWorkoutParams {
   durationMinutes: number;
   difficulty: Difficulty;
   equipmentIds: string[];
+  equipmentPreference?: "bodyweight" | "equipment" | "any";
 }
