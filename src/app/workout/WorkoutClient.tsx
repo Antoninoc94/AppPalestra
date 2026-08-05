@@ -768,77 +768,67 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
                         );
                       })()}
 
-                      <div className="grid grid-cols-[1.5rem_1fr_1fr_2.75rem] gap-2 text-[10px] text-zinc-500 font-medium px-1">
-                        <span>#</span>
-                        <span className="text-center">Peso (kg)</span>
-                        <span className="text-center">Reps</span>
-                        <span />
-                      </div>
+                      {ex.sets.map((set, setI) => {
+                        const wt = (delta: number) => updateSet(exI, setI, "weight", Math.max(0, Math.round(((set.weight ?? 0) + delta) * 10) / 10));
+                        const rp = (delta: number) => updateSet(exI, setI, "reps", Math.max(1, set.reps + delta));
+                        const btnCls = "shrink-0 rounded-lg bg-zinc-800 border border-zinc-700 h-9 px-2.5 text-xs font-semibold text-zinc-300 active:bg-zinc-700 select-none transition-colors hover:bg-zinc-700";
+                        return (
+                          <div key={setI} className={`rounded-xl border p-3 space-y-2.5 transition-colors ${set.done ? "bg-green-500/5 border-green-500/20" : "bg-zinc-900/80 border-zinc-800"}`}>
+                            {/* Header */}
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-semibold text-zinc-400">Serie {setI + 1}</span>
+                              <button
+                                onClick={() => toggleSetDone(exI, setI)}
+                                className={`flex items-center gap-1.5 rounded-lg h-7 px-3 text-xs font-semibold transition-all ${
+                                  set.done ? "bg-green-500 text-white" : "bg-zinc-800 border border-zinc-700 text-zinc-400 active:bg-zinc-700"
+                                }`}
+                              >
+                                <Check className="h-3 w-3" />
+                                {set.done ? "Completata" : "Segna fatto"}
+                              </button>
+                            </div>
 
-                      {ex.sets.map((set, setI) => (
-                        <div
-                          key={setI}
-                          className={`grid grid-cols-[1.5rem_1fr_1fr_2.75rem] gap-2 items-center rounded-xl px-2 py-1.5 transition-colors ${set.done ? "bg-green-500/5" : "bg-zinc-900"}`}
-                        >
-                          <span className="text-xs text-zinc-500 text-center font-medium">{setI + 1}</span>
+                            {/* Weight */}
+                            <div>
+                              <p className="text-[10px] text-zinc-500 uppercase tracking-wider font-medium mb-1.5">Peso (kg)</p>
+                              <div className="flex items-center gap-1">
+                                <button type="button" onClick={() => wt(-2.5)} className={btnCls}>−2.5</button>
+                                <button type="button" onClick={() => wt(-1)} className={btnCls}>−1</button>
+                                <input
+                                  type="number"
+                                  inputMode="decimal"
+                                  value={set.weight ?? ""}
+                                  onChange={(e) => updateSet(exI, setI, "weight", e.target.value ? parseFloat(e.target.value) : null)}
+                                  placeholder="—"
+                                  className="flex-1 min-w-0 rounded-lg border border-zinc-700 bg-zinc-800 text-sm text-center py-2 focus:outline-none focus:border-orange-500 text-zinc-100 placeholder:text-zinc-600"
+                                  step={2.5}
+                                />
+                                <button type="button" onClick={() => wt(+1)} className={btnCls}>+1</button>
+                                <button type="button" onClick={() => wt(+2.5)} className={btnCls}>+2.5</button>
+                              </div>
+                            </div>
 
-                          {/* Weight stepper */}
-                          <div className="flex items-center rounded-lg overflow-hidden border border-zinc-700 bg-zinc-800">
-                            <button
-                              type="button"
-                              onClick={() => updateSet(exI, setI, "weight", Math.max(0, Math.round(((set.weight ?? 0) - 2.5) * 10) / 10))}
-                              className="w-7 h-9 flex items-center justify-center text-zinc-300 text-base font-medium active:bg-zinc-700 shrink-0 select-none"
-                            >−</button>
-                            <input
-                              type="number"
-                              inputMode="decimal"
-                              value={set.weight ?? ""}
-                              onChange={(e) => updateSet(exI, setI, "weight", e.target.value ? parseFloat(e.target.value) : null)}
-                              placeholder="—"
-                              className="flex-1 min-w-0 bg-transparent text-sm text-center py-2 focus:outline-none text-zinc-100 placeholder:text-zinc-600"
-                              step={2.5}
-                            />
-                            <button
-                              type="button"
-                              onClick={() => updateSet(exI, setI, "weight", Math.round(((set.weight ?? 0) + 2.5) * 10) / 10)}
-                              className="w-7 h-9 flex items-center justify-center text-zinc-300 text-base font-medium active:bg-zinc-700 shrink-0 select-none"
-                            >+</button>
+                            {/* Reps */}
+                            <div>
+                              <p className="text-[10px] text-zinc-500 uppercase tracking-wider font-medium mb-1.5">Ripetizioni</p>
+                              <div className="flex items-center gap-1">
+                                <button type="button" onClick={() => rp(-2)} className={btnCls}>−2</button>
+                                <button type="button" onClick={() => rp(-1)} className={btnCls}>−1</button>
+                                <input
+                                  type="number"
+                                  inputMode="numeric"
+                                  value={set.reps}
+                                  onChange={(e) => updateSet(exI, setI, "reps", Math.max(1, parseInt(e.target.value) || 1))}
+                                  className="flex-1 min-w-0 rounded-lg border border-zinc-700 bg-zinc-800 text-sm text-center py-2 focus:outline-none focus:border-orange-500 text-zinc-100"
+                                  min={1}
+                                />
+                                <button type="button" onClick={() => rp(+1)} className={btnCls}>+1</button>
+                                <button type="button" onClick={() => rp(+2)} className={btnCls}>+2</button>
+                              </div>
+                            </div>
                           </div>
-
-                          {/* Reps stepper */}
-                          <div className="flex items-center rounded-lg overflow-hidden border border-zinc-700 bg-zinc-800">
-                            <button
-                              type="button"
-                              onClick={() => updateSet(exI, setI, "reps", Math.max(1, set.reps - 1))}
-                              className="w-7 h-9 flex items-center justify-center text-zinc-300 text-base font-medium active:bg-zinc-700 shrink-0 select-none"
-                            >−</button>
-                            <input
-                              type="number"
-                              inputMode="numeric"
-                              value={set.reps}
-                              onChange={(e) => updateSet(exI, setI, "reps", Math.max(1, parseInt(e.target.value) || 1))}
-                              className="flex-1 min-w-0 bg-transparent text-sm text-center py-2 focus:outline-none text-zinc-100"
-                              min={1}
-                            />
-                            <button
-                              type="button"
-                              onClick={() => updateSet(exI, setI, "reps", set.reps + 1)}
-                              className="w-7 h-9 flex items-center justify-center text-zinc-300 text-base font-medium active:bg-zinc-700 shrink-0 select-none"
-                            >+</button>
-                          </div>
-
-                          <button
-                            onClick={() => toggleSetDone(exI, setI)}
-                            className={`rounded-lg h-10 w-10 flex items-center justify-center transition-all ${
-                              set.done
-                                ? "bg-green-500 text-white"
-                                : "border border-zinc-700 bg-zinc-800 text-zinc-500 active:bg-zinc-700"
-                            }`}
-                          >
-                            <Check className="h-4 w-4" />
-                          </button>
-                        </div>
-                      ))}
+                        );
+                      })}
 
                       <div className="flex gap-2 pt-1">
                         <Button variant="ghost" size="sm" className="gap-1 text-xs" onClick={() => addSet(exI)}>
@@ -954,28 +944,39 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
 
       {/* Exercise picker modal */}
       {showExPicker && (
-        <div className="fixed inset-0 z-[60] bg-black/80 flex flex-col justify-end">
-          <div className="bg-zinc-950 rounded-t-2xl flex flex-col" style={{ height: "85svh" }}>
-            <div className="p-4 border-b border-zinc-800 flex items-center justify-between shrink-0">
-              <h3 className="font-semibold">Aggiungi esercizio</h3>
-              <button onClick={() => { setShowExPicker(false); setFreeExSearch(""); setMuscleFilter(""); }}>
-                <X className="h-5 w-5 text-zinc-400" />
+        <div className="fixed inset-0 z-[60] bg-black/80 flex flex-col justify-end sm:items-center sm:justify-center sm:p-6">
+          <div className="bg-zinc-950 rounded-t-2xl sm:rounded-2xl flex flex-col w-full sm:max-w-2xl sm:shadow-2xl" style={{ height: "85svh" }}>
+            {/* Header */}
+            <div className="px-5 py-4 border-b border-zinc-800 flex items-center justify-between shrink-0">
+              <div>
+                <h3 className="font-bold text-base">Aggiungi esercizio</h3>
+                {filteredFreeEx.length > 0 && (
+                  <p className="text-zinc-500 text-xs mt-0.5">{filteredFreeEx.length} esercizi{muscleFilter ? ` · ${muscleFilter}` : ""}</p>
+                )}
+              </div>
+              <button
+                onClick={() => { setShowExPicker(false); setFreeExSearch(""); setMuscleFilter(""); }}
+                className="rounded-xl p-2 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-colors"
+              >
+                <X className="h-5 w-5" />
               </button>
             </div>
-            <div className="px-4 pt-3 pb-2 shrink-0 space-y-2">
+
+            {/* Search + filters */}
+            <div className="px-5 pt-3 pb-2 shrink-0 space-y-2.5">
               <input
                 type="search"
                 placeholder="Cerca esercizio..."
                 value={freeExSearch}
                 onChange={(e) => setFreeExSearch(e.target.value)}
-                className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-2.5 text-sm focus:outline-none focus:border-orange-500"
+                className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-2.5 text-sm focus:outline-none focus:border-orange-500 text-zinc-100 placeholder:text-zinc-500"
                 autoFocus
               />
-              <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
+              <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-0.5">
                 <button
                   onClick={() => setMuscleFilter("")}
                   className={`shrink-0 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-                    !muscleFilter ? "bg-orange-500 text-white" : "bg-zinc-800 text-zinc-300"
+                    !muscleFilter ? "bg-orange-500 text-white" : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
                   }`}
                 >
                   <Filter className="h-3 w-3" />
@@ -986,7 +987,7 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
                     key={m}
                     onClick={() => setMuscleFilter(m === muscleFilter ? "" : m)}
                     className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-                      muscleFilter === m ? "bg-orange-500 text-white" : "bg-zinc-800 text-zinc-300"
+                      muscleFilter === m ? "bg-orange-500 text-white" : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
                     }`}
                   >
                     {m}
@@ -994,30 +995,42 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
                 ))}
               </div>
             </div>
-            <div className="overflow-y-auto flex-1 px-4 pb-10 space-y-2">
+
+            {/* Exercise list */}
+            <div className="overflow-y-auto flex-1 px-5 pb-10">
               {filteredFreeEx.length === 0 ? (
-                <p className="text-center text-zinc-500 text-sm py-8">Nessun esercizio trovato</p>
+                <div className="text-center py-12 text-zinc-500">
+                  <Dumbbell className="h-8 w-8 mx-auto mb-2 opacity-20" />
+                  <p className="text-sm">Nessun esercizio trovato</p>
+                </div>
               ) : (
-                filteredFreeEx.map((ex) => (
-                  <div
-                    key={ex.id}
-                    className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900 p-3 hover:border-orange-500/30 transition-colors"
-                  >
-                    <button
-                      onClick={() => addFreeExercise(ex)}
-                      className="flex-1 text-left min-w-0"
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                  {filteredFreeEx.map((ex) => (
+                    <div
+                      key={ex.id}
+                      className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900 p-3.5 hover:border-orange-500/30 hover:bg-zinc-800/60 transition-colors group"
                     >
-                      <p className="font-medium text-sm">{ex.nameIt ?? ex.name}</p>
-                      <p className="text-zinc-400 text-xs mt-0.5">{ex.primaryMuscle.nameIt}</p>
-                    </button>
-                    <button
-                      onClick={() => setInfoExercise(ex as ExerciseWithRelations)}
-                      className="shrink-0 p-1.5 text-zinc-500 hover:text-orange-400 transition-colors"
-                    >
-                      <Info className="h-4 w-4" />
-                    </button>
-                  </div>
-                ))
+                      <button
+                        onClick={() => addFreeExercise(ex)}
+                        className="flex-1 text-left min-w-0 flex items-center gap-3"
+                      >
+                        <div className="rounded-lg bg-orange-500/10 p-2 shrink-0 group-hover:bg-orange-500/20 transition-colors">
+                          <Dumbbell className="h-3.5 w-3.5 text-orange-400" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-medium text-sm leading-tight truncate">{ex.nameIt ?? ex.name}</p>
+                          <p className="text-zinc-500 text-xs mt-0.5">{ex.primaryMuscle.nameIt}</p>
+                        </div>
+                      </button>
+                      <button
+                        onClick={() => setInfoExercise(ex as ExerciseWithRelations)}
+                        className="shrink-0 p-1.5 text-zinc-600 hover:text-orange-400 transition-colors"
+                      >
+                        <Info className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
           </div>
