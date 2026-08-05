@@ -35,6 +35,25 @@ export async function POST(req: NextRequest) {
     return result;
   }
 
+  // Ripara encoding doppio (UTF-8 letto come Latin-1 e risalvato come UTF-8).
+  // Pattern: Ã seguito da byte di continuazione → il testo va decodificato
+  // reinterpretando ogni char come byte Latin-1 e poi leggendo come UTF-8.
+  function fixEncoding(str: string): string {
+    // Controlla presenza del pattern: char ≥ 0xC0 nel range Latin-1 extended
+    if (!/[À-ÿ]/.test(str)) return str;
+    try {
+      const bytes = new Uint8Array(str.length);
+      for (let i = 0; i < str.length; i++) {
+        const code = str.charCodeAt(i);
+        if (code > 255) return str; // non è Latin-1 — lascia stare
+        bytes[i] = code;
+      }
+      return new TextDecoder("utf-8").decode(bytes);
+    } catch {
+      return str; // se non è UTF-8 valido, usa l'originale
+    }
+  }
+
   // Strip BOM if present
   const rawHeader = lines[0].replace(/^﻿/, "");
   const header = parseLine(rawHeader).map((h) => h.toLowerCase().replace(/[^a-z]/g, ""));
@@ -54,9 +73,9 @@ export async function POST(req: NextRequest) {
 
   for (let i = 1; i < lines.length; i++) {
     const cols = parseLine(lines[i]);
-    const nameEn  = cols[colNomeEn]  ?? "";
-    const nameIt  = colNomeIt  >= 0 ? (cols[colNomeIt]  ?? "") : "";
-    const desc    = colDesc    >= 0 ? (cols[colDesc]    ?? "") : "";
+    const nameEn = cols[colNomeEn] ?? "";
+    const nameIt = colNomeIt >= 0 ? fixEncoding(cols[colNomeIt] ?? "") : "";
+    const desc   = colDesc   >= 0 ? fixEncoding(cols[colDesc]   ?? "") : "";
 
     if (!nameEn) continue;
 
