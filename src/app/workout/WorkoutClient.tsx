@@ -422,7 +422,7 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
     const wasFreestyle = !selectedDay && doneExercisesRef.current.length > 0;
     const modalExercises = doneExercisesRef.current.length > 0 ? doneExercisesRef.current : (pendingDone?.exercises ?? []);
     return (
-      <div className="min-h-[calc(100dvh-5rem)] flex flex-col items-center justify-center px-4 py-8">
+      <div className="flex flex-col items-center px-4 pt-14 pb-24 sm:min-h-[calc(100dvh-5rem)] sm:justify-center sm:py-8">
         <div className="w-full max-w-sm space-y-4 text-center">
           <div className="rounded-full bg-green-500/10 p-6 w-24 h-24 mx-auto flex items-center justify-center">
             <Flag className="h-10 w-10 text-green-400" />
