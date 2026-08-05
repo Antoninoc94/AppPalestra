@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import {
   Lock, LogOut, Shield, Loader2, Eye, EyeOff,
   RotateCcw, AlertTriangle, Trophy, ChevronDown, ChevronUp,
-  Dumbbell, Calendar, Flame,
+  Dumbbell, Calendar, Flame, Download,
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -236,6 +236,22 @@ export function ProfileClient({
             </div>
           )}
         </div>
+      </div>
+
+      {/* ── Esportazione dati ── */}
+      <div className="space-y-2.5">
+        <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-widest flex items-center gap-2">
+          <Download className="h-3.5 w-3.5" />
+          Dati
+        </h2>
+        <a
+          href="/api/sessions/export"
+          download
+          className="flex items-center gap-2 justify-center rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm font-medium hover:bg-zinc-800 active:bg-zinc-700 transition-all"
+        >
+          <Download className="h-4 w-4 text-zinc-400" />
+          Esporta allenamenti CSV
+        </a>
       </div>
 
       {/* ── Zona pericolosa ── */}

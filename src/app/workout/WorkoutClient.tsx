@@ -60,6 +60,7 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
   const [createProgramError, setCreateProgramError] = useState<string | null>(null);
   const doneExercisesRef = useRef<typeof logExercises>([]);
   const [pendingDone, setPendingDone] = useState<{ exercises: typeof logExercises; completedSets: number; duration: number } | null>(null);
+  const [lastSessionData, setLastSessionData] = useState<Record<string, { date: string; sets: { weight: number | null; reps: number }[] }>>({});
 
   function clearWorkoutStorage() {
     if (serverSyncRef.current) { clearTimeout(serverSyncRef.current); serverSyncRef.current = null; }
@@ -183,6 +184,16 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
       timerRef.current = setInterval(() => setElapsed((e) => e + 1), 1000);
     }
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [phase]);
+
+  useEffect(() => {
+    if (phase !== "active" || logExercises.length === 0) return;
+    const ids = logExercises.map((e) => e.exerciseId).join(",");
+    fetch(`/api/workout/last-session?exerciseIds=${ids}`)
+      .then((r) => r.json())
+      .then((data) => setLastSessionData(data))
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
 
   useEffect(() => {
@@ -739,7 +750,25 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
                           <p className="text-zinc-400 text-xs italic">{ex.notes}</p>
                         </div>
                       )}
-                      <div className="grid grid-cols-[1.5rem_1fr_1fr_2.75rem] gap-2 text-[10px] text-zinc-500 font-medium px-1 mb-1">
+
+                      {/* Ultima volta */}
+                      {lastSessionData[ex.exerciseId] && (() => {
+                        const last = lastSessionData[ex.exerciseId];
+                        const d = new Date(last.date);
+                        const dateStr = d.toLocaleDateString("it-IT", { day: "numeric", month: "short" });
+                        const maxWeight = last.sets.reduce((m, s) => Math.max(m, s.weight ?? 0), 0);
+                        const avgReps = Math.round(last.sets.reduce((s, r) => s + r.reps, 0) / last.sets.length);
+                        return (
+                          <div className="rounded-lg bg-blue-500/5 border border-blue-500/20 px-3 py-2 flex items-center gap-2">
+                            <div className="h-1.5 w-1.5 rounded-full bg-blue-400 shrink-0" />
+                            <p className="text-[11px] text-blue-300/80">
+                              Ultima volta ({dateStr}): {maxWeight > 0 ? `${maxWeight} kg × ` : ""}{avgReps} reps — {last.sets.length} serie
+                            </p>
+                          </div>
+                        );
+                      })()}
+
+                      <div className="grid grid-cols-[1.5rem_1fr_1fr_2.75rem] gap-2 text-[10px] text-zinc-500 font-medium px-1">
                         <span>#</span>
                         <span className="text-center">Peso (kg)</span>
                         <span className="text-center">Reps</span>
@@ -749,24 +778,55 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
                       {ex.sets.map((set, setI) => (
                         <div
                           key={setI}
-                          className={`grid grid-cols-[1.5rem_1fr_1fr_2.75rem] gap-2 items-center rounded-xl px-2 py-1 transition-colors ${set.done ? "bg-green-500/5" : "bg-zinc-900"}`}
+                          className={`grid grid-cols-[1.5rem_1fr_1fr_2.75rem] gap-2 items-center rounded-xl px-2 py-1.5 transition-colors ${set.done ? "bg-green-500/5" : "bg-zinc-900"}`}
                         >
                           <span className="text-xs text-zinc-500 text-center font-medium">{setI + 1}</span>
-                          <input
-                            type="number"
-                            value={set.weight ?? ""}
-                            onChange={(e) => updateSet(exI, setI, "weight", e.target.value ? parseFloat(e.target.value) : null)}
-                            placeholder="—"
-                            className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-2 py-2.5 text-sm text-center focus:outline-none focus:border-orange-500"
-                            step={2.5}
-                          />
-                          <input
-                            type="number"
-                            value={set.reps}
-                            onChange={(e) => updateSet(exI, setI, "reps", parseInt(e.target.value))}
-                            className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-2 py-2.5 text-sm text-center focus:outline-none focus:border-orange-500"
-                            min={1}
-                          />
+
+                          {/* Weight stepper */}
+                          <div className="flex items-center rounded-lg overflow-hidden border border-zinc-700 bg-zinc-800">
+                            <button
+                              type="button"
+                              onClick={() => updateSet(exI, setI, "weight", Math.max(0, Math.round(((set.weight ?? 0) - 2.5) * 10) / 10))}
+                              className="w-7 h-9 flex items-center justify-center text-zinc-300 text-base font-medium active:bg-zinc-700 shrink-0 select-none"
+                            >−</button>
+                            <input
+                              type="number"
+                              inputMode="decimal"
+                              value={set.weight ?? ""}
+                              onChange={(e) => updateSet(exI, setI, "weight", e.target.value ? parseFloat(e.target.value) : null)}
+                              placeholder="—"
+                              className="flex-1 min-w-0 bg-transparent text-sm text-center py-2 focus:outline-none text-zinc-100 placeholder:text-zinc-600"
+                              step={2.5}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => updateSet(exI, setI, "weight", Math.round(((set.weight ?? 0) + 2.5) * 10) / 10)}
+                              className="w-7 h-9 flex items-center justify-center text-zinc-300 text-base font-medium active:bg-zinc-700 shrink-0 select-none"
+                            >+</button>
+                          </div>
+
+                          {/* Reps stepper */}
+                          <div className="flex items-center rounded-lg overflow-hidden border border-zinc-700 bg-zinc-800">
+                            <button
+                              type="button"
+                              onClick={() => updateSet(exI, setI, "reps", Math.max(1, set.reps - 1))}
+                              className="w-7 h-9 flex items-center justify-center text-zinc-300 text-base font-medium active:bg-zinc-700 shrink-0 select-none"
+                            >−</button>
+                            <input
+                              type="number"
+                              inputMode="numeric"
+                              value={set.reps}
+                              onChange={(e) => updateSet(exI, setI, "reps", Math.max(1, parseInt(e.target.value) || 1))}
+                              className="flex-1 min-w-0 bg-transparent text-sm text-center py-2 focus:outline-none text-zinc-100"
+                              min={1}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => updateSet(exI, setI, "reps", set.reps + 1)}
+                              className="w-7 h-9 flex items-center justify-center text-zinc-300 text-base font-medium active:bg-zinc-700 shrink-0 select-none"
+                            >+</button>
+                          </div>
+
                           <button
                             onClick={() => toggleSetDone(exI, setI)}
                             className={`rounded-lg h-10 w-10 flex items-center justify-center transition-all ${

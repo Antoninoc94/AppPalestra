@@ -13,9 +13,14 @@ export async function generateMetadata(): Promise<Metadata> {
     title: s.appName,
     description: "Il tuo tracker personale per la palestra",
     manifest: "/manifest.json",
-    ...(s.faviconBase64 && {
-      icons: { icon: s.faviconBase64, apple: s.faviconBase64 },
-    }),
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: "black-translucent",
+      title: s.appName,
+    },
+    ...(s.faviconBase64
+      ? { icons: { icon: s.faviconBase64, apple: s.faviconBase64 } }
+      : { icons: { icon: "/icon-192.png", apple: "/apple-icon.png" } }),
   };
 }
 
