@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,7 @@ export function AdminClient({ users: initial, currentUserId }: { users: User[]; 
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<{ updated: number; notFound: number; total: number } | null>(null);
   const [importError, setImportError] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function createUser(e: React.FormEvent) {
     e.preventDefault();
@@ -148,13 +149,24 @@ export function AdminClient({ users: initial, currentUserId }: { users: User[]; 
                 Esporta CSV
               </Button>
             </a>
-            <label className="cursor-pointer">
-              <Button variant="outline" size="sm" className="gap-2 pointer-events-none" disabled={importing}>
-                {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                {importing ? "Importando..." : "Importa CSV"}
-              </Button>
-              <input type="file" accept=".csv" className="hidden" onChange={importCsv} disabled={importing} />
-            </label>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              disabled={importing}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+              {importing ? "Importando..." : "Importa CSV"}
+            </Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv"
+              className="hidden"
+              onChange={importCsv}
+              disabled={importing}
+            />
           </div>
           <p className="text-[11px] text-zinc-500">
             Il CSV deve avere le colonne: <span className="font-mono text-zinc-400">Nome inglese</span> (obbligatoria),{" "}
