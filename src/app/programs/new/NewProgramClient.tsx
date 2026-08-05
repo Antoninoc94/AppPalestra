@@ -657,7 +657,8 @@ export function NewProgramClient({ muscleGroups, equipment, exercises }: Props) 
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+              );
+            })}
 
               <Button variant="outline" className="w-full gap-2" onClick={() => setShowPicker(true)}>
                 <Plus className="h-4 w-4" />
