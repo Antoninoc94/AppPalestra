@@ -42,6 +42,7 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
   const [muscleFilter, setMuscleFilter] = useState("");
 
   function clearWorkoutStorage() {
+    if (serverSyncRef.current) { clearTimeout(serverSyncRef.current); serverSyncRef.current = null; }
     try { localStorage.removeItem(storageKey(userId)); } catch {}
     fetch("/api/workout/draft", { method: "DELETE" }).catch(() => {});
   }
