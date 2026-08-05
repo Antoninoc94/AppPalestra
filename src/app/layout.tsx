@@ -3,14 +3,21 @@ import { Geist } from "next/font/google";
 import "./globals.css";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { auth } from "@/auth";
+import { getAppSettings, buildPrimaryColorCss } from "@/lib/app-settings";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
 
-export const metadata: Metadata = {
-  title: "App Palestra",
-  description: "Il tuo tracker personale per la palestra",
-  manifest: "/manifest.json",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const s = await getAppSettings();
+  return {
+    title: s.appName,
+    description: "Il tuo tracker personale per la palestra",
+    manifest: "/manifest.json",
+    ...(s.faviconBase64 && {
+      icons: { icon: s.faviconBase64, apple: s.faviconBase64 },
+    }),
+  };
+}
 
 export const viewport: Viewport = {
   themeColor: "#09090b",
@@ -21,16 +28,25 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const session = await auth();
+  const [session, settings] = await Promise.all([auth(), getAppSettings()]);
   const isLoggedIn = !!session?.user;
+  const colorCss = buildPrimaryColorCss(settings.primaryColor);
 
   return (
     <html lang="it" className={`${geist.variable} h-full`}>
+      <head>
+        {colorCss && (
+          <style dangerouslySetInnerHTML={{ __html: colorCss }} />
+        )}
+        {settings.faviconBase64 && (
+          <link rel="icon" href={settings.faviconBase64} />
+        )}
+      </head>
       <body className="min-h-full bg-zinc-950 text-zinc-100 antialiased">
         <main className="mx-auto max-w-lg min-h-screen pb-24">
           {children}
         </main>
-        {isLoggedIn && <BottomNav />}
+        {isLoggedIn && <BottomNav logoBase64={settings.logoBase64} appName={settings.appName} />}
       </body>
     </html>
   );

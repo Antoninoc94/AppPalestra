@@ -7,10 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   ArrowLeft, UserPlus, Trash2, RotateCcw, Users, Loader2, Eye, EyeOff,
-  Upload, Download, CheckCircle2, Copy, Check
+  Upload, Download, CheckCircle2, Copy, Check, Paintbrush, ImageIcon, Save
 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { formatShortDate } from "@/lib/utils";
+import type { AppSettings } from "@/lib/app-settings";
 
 type User = {
   id: string;
@@ -20,7 +22,26 @@ type User = {
   _count: { programs: number; sessions: number };
 };
 
-export function AdminClient({ users: initial, currentUserId }: { users: User[]; currentUserId: string }) {
+const PRESET_COLORS = [
+  { label: "Arancione", value: "#f97316" },
+  { label: "Blu", value: "#3b82f6" },
+  { label: "Verde", value: "#22c55e" },
+  { label: "Viola", value: "#a855f7" },
+  { label: "Rosa", value: "#ec4899" },
+  { label: "Rosso", value: "#ef4444" },
+  { label: "Ciano", value: "#06b6d4" },
+  { label: "Giallo", value: "#eab308" },
+];
+
+export function AdminClient({
+  users: initial,
+  currentUserId,
+  initialSettings,
+}: {
+  users: User[];
+  currentUserId: string;
+  initialSettings: AppSettings;
+}) {
   const router = useRouter();
   const [users, setUsers] = useState(initial);
   const [showForm, setShowForm] = useState(false);
@@ -37,6 +58,17 @@ export function AdminClient({ users: initial, currentUserId }: { users: User[]; 
   const [importResult, setImportResult] = useState<{ updated: number; notFound: number; total: number } | null>(null);
   const [importError, setImportError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Branding state
+  const [appName, setAppName] = useState(initialSettings.appName);
+  const [primaryColor, setPrimaryColor] = useState(initialSettings.primaryColor);
+  const [logoBase64, setLogoBase64] = useState<string | null>(initialSettings.logoBase64);
+  const [faviconBase64, setFaviconBase64] = useState<string | null>(initialSettings.faviconBase64);
+  const [savingBranding, setSavingBranding] = useState(false);
+  const [brandingOk, setBrandingOk] = useState(false);
+  const [brandingError, setBrandingError] = useState("");
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const faviconInputRef = useRef<HTMLInputElement>(null);
 
   async function createUser(e: React.FormEvent) {
     e.preventDefault();
@@ -123,6 +155,58 @@ export function AdminClient({ users: initial, currentUserId }: { users: User[]; 
     }
   }
 
+  function readFileAsBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 500 * 1024) { setBrandingError("Logo troppo grande (max 500 KB)"); return; }
+    const b64 = await readFileAsBase64(file);
+    setLogoBase64(b64);
+    e.target.value = "";
+  }
+
+  async function handleFaviconUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 100 * 1024) { setBrandingError("Favicon troppo grande (max 100 KB)"); return; }
+    const b64 = await readFileAsBase64(file);
+    setFaviconBase64(b64);
+    e.target.value = "";
+  }
+
+  async function saveBranding() {
+    setSavingBranding(true);
+    setBrandingOk(false);
+    setBrandingError("");
+    try {
+      const res = await fetch("/api/admin/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ appName, primaryColor, logoBase64, faviconBase64 }),
+      });
+      if (res.ok) {
+        setBrandingOk(true);
+        setTimeout(() => setBrandingOk(false), 3000);
+        router.refresh();
+      } else {
+        const d = await res.json().catch(() => ({}));
+        setBrandingError(d.error ?? "Errore salvataggio");
+      }
+    } catch {
+      setBrandingError("Errore di rete");
+    } finally {
+      setSavingBranding(false);
+    }
+  }
+
   return (
     <div className="px-4 py-6 space-y-6 pb-24">
       <div className="flex items-center gap-3">
@@ -183,6 +267,184 @@ export function AdminClient({ users: initial, currentUserId }: { users: User[]; 
             </div>
           )}
           {importError && <p className="text-sm text-red-400">{importError}</p>}
+        </CardContent>
+      </Card>
+
+      {/* Sezione personalizzazione branding */}
+      <Card>
+        <CardContent className="p-4 space-y-4">
+          <p className="font-semibold text-sm flex items-center gap-2">
+            <Paintbrush className="h-4 w-4 text-orange-400" />
+            Personalizzazione app
+          </p>
+
+          {/* Nome app */}
+          <div className="space-y-1.5">
+            <label className="text-xs text-zinc-400">Nome dell&apos;app</label>
+            <input
+              type="text"
+              value={appName}
+              onChange={(e) => setAppName(e.target.value)}
+              placeholder="App Palestra"
+              className="w-full rounded-lg bg-zinc-800 border border-zinc-700 px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-orange-500"
+            />
+          </div>
+
+          {/* Colore primario */}
+          <div className="space-y-2">
+            <label className="text-xs text-zinc-400">Colore principale</label>
+            <div className="flex flex-wrap gap-2">
+              {PRESET_COLORS.map((c) => (
+                <button
+                  key={c.value}
+                  onClick={() => setPrimaryColor(c.value)}
+                  title={c.label}
+                  className="w-8 h-8 rounded-full border-2 transition-all"
+                  style={{
+                    backgroundColor: c.value,
+                    borderColor: primaryColor === c.value ? "white" : "transparent",
+                    transform: primaryColor === c.value ? "scale(1.15)" : "scale(1)",
+                  }}
+                />
+              ))}
+              <div className="relative">
+                <input
+                  type="color"
+                  value={primaryColor}
+                  onChange={(e) => setPrimaryColor(e.target.value)}
+                  className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                  title="Colore personalizzato"
+                />
+                <div
+                  className="w-8 h-8 rounded-full border-2 flex items-center justify-center text-[10px] font-bold text-white"
+                  style={{
+                    backgroundColor: primaryColor,
+                    borderColor: PRESET_COLORS.some((c) => c.value === primaryColor) ? "transparent" : "white",
+                  }}
+                >
+                  +
+                </div>
+              </div>
+            </div>
+            <p className="text-[11px] text-zinc-500">Colore selezionato: <span className="font-mono text-zinc-300">{primaryColor}</span></p>
+          </div>
+
+          {/* Logo */}
+          <div className="space-y-2">
+            <label className="text-xs text-zinc-400">Logo app</label>
+            <div className="flex items-center gap-3">
+              {logoBase64 ? (
+                <Image
+                  src={logoBase64}
+                  alt="Logo"
+                  width={48}
+                  height={48}
+                  className="rounded-lg object-contain border border-zinc-700 bg-zinc-800 p-1"
+                  unoptimized
+                />
+              ) : (
+                <div className="w-12 h-12 rounded-lg border border-dashed border-zinc-700 bg-zinc-800 flex items-center justify-center">
+                  <ImageIcon className="h-5 w-5 text-zinc-600" />
+                </div>
+              )}
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-xs"
+                  onClick={() => logoInputRef.current?.click()}
+                >
+                  <Upload className="h-3.5 w-3.5" />
+                  {logoBase64 ? "Cambia" : "Carica"}
+                </Button>
+                {logoBase64 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="gap-1.5 text-xs text-red-400 hover:text-red-300"
+                    onClick={() => setLogoBase64(null)}
+                  >
+                    Rimuovi
+                  </Button>
+                )}
+              </div>
+              <input
+                ref={logoInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleLogoUpload}
+              />
+            </div>
+            <p className="text-[11px] text-zinc-500">PNG, JPG o SVG · max 500 KB · comparirà nella barra di navigazione</p>
+          </div>
+
+          {/* Favicon */}
+          <div className="space-y-2">
+            <label className="text-xs text-zinc-400">Favicon (icona tab browser)</label>
+            <div className="flex items-center gap-3">
+              {faviconBase64 ? (
+                <Image
+                  src={faviconBase64}
+                  alt="Favicon"
+                  width={32}
+                  height={32}
+                  className="rounded border border-zinc-700 bg-zinc-800 p-0.5 object-contain"
+                  unoptimized
+                />
+              ) : (
+                <div className="w-8 h-8 rounded border border-dashed border-zinc-700 bg-zinc-800 flex items-center justify-center">
+                  <ImageIcon className="h-4 w-4 text-zinc-600" />
+                </div>
+              )}
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-xs"
+                  onClick={() => faviconInputRef.current?.click()}
+                >
+                  <Upload className="h-3.5 w-3.5" />
+                  {faviconBase64 ? "Cambia" : "Carica"}
+                </Button>
+                {faviconBase64 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="gap-1.5 text-xs text-red-400 hover:text-red-300"
+                    onClick={() => setFaviconBase64(null)}
+                  >
+                    Rimuovi
+                  </Button>
+                )}
+              </div>
+              <input
+                ref={faviconInputRef}
+                type="file"
+                accept="image/*,.ico"
+                className="hidden"
+                onChange={handleFaviconUpload}
+              />
+            </div>
+            <p className="text-[11px] text-zinc-500">PNG o ICO · max 100 KB · ideale 32×32 o 64×64 px</p>
+          </div>
+
+          {brandingError && <p className="text-sm text-red-400">{brandingError}</p>}
+
+          <Button
+            className="w-full gap-2"
+            onClick={saveBranding}
+            disabled={savingBranding || !appName.trim()}
+          >
+            {savingBranding ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : brandingOk ? (
+              <CheckCircle2 className="h-4 w-4 text-green-400" />
+            ) : (
+              <Save className="h-4 w-4" />
+            )}
+            {savingBranding ? "Salvataggio..." : brandingOk ? "Salvato!" : "Salva personalizzazione"}
+          </Button>
         </CardContent>
       </Card>
 

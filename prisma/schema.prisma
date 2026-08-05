@@ -136,6 +136,15 @@ model WorkoutSession {
   updatedAt    DateTime     @updatedAt
 }
 
+model AppSettings {
+  id            String   @id @default("singleton")
+  appName       String   @default("App Palestra")
+  primaryColor  String   @default("#f97316")
+  logoBase64    String?
+  faviconBase64 String?
+  updatedAt     DateTime @updatedAt
+}
+
 model WorkoutSet {
   id          String         @id @default(cuid())
   session     WorkoutSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
