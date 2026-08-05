@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +36,7 @@ const GOALS = ["strength", "hypertrophy", "endurance", "weight_loss", "general"]
 
 export function WorkoutClient({ programs, allExercises, userId }: Props & { userId: string }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [phase, setPhase] = useState<"select" | "active" | "done">("select");
   const [selectedDay, setSelectedDay] = useState<ProgramDay | null>(null);
   const [logExercises, setLogExercises] = useState<LogExercise[]>([]);
@@ -129,26 +130,38 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
           if (restoreFromData(data)) return;
         }
       } catch {}
+
+      // Controlla se c'è un allenamento libero appena completato (max 24h fa)
+      // Lo facciamo PRIMA del server draft per evitare race condition
+      // (il server potrebbe avere ancora il draft vecchio se il DELETE era lento)
+      let hasDoneRecord = false;
+      try {
+        const raw = localStorage.getItem(doneKey(userId));
+        if (raw) {
+          const rec = JSON.parse(raw);
+          if (rec.at && Date.now() - rec.at < 24 * 60 * 60 * 1000 && rec.exercises?.length > 0) {
+            hasDoneRecord = true;
+            doneExercisesRef.current = rec.exercises;
+            setPendingDone({ exercises: rec.exercises, completedSets: rec.completedSets, duration: rec.duration });
+            if (searchParams.get("createProgram") === "1") {
+              setShowCreateProgram(true);
+            }
+          } else {
+            localStorage.removeItem(doneKey(userId));
+          }
+        }
+      } catch {}
+
+      // Se c'è un allenamento completato recente, non rischiamo di ripristinare
+      // il draft server (che potrebbe non essere stato ancora eliminato)
+      if (hasDoneRecord) return;
+
       // localStorage vuoto o nessun allenamento attivo — prova dal server
       try {
         const res = await fetch("/api/workout/draft");
         if (res.ok) {
           const data = await res.json();
           if (data) restoreFromData(data);
-        }
-      } catch {}
-
-      // Controlla se c'è un allenamento libero appena completato (max 24h fa)
-      try {
-        const raw = localStorage.getItem(doneKey(userId));
-        if (raw) {
-          const rec = JSON.parse(raw);
-          if (rec.at && Date.now() - rec.at < 24 * 60 * 60 * 1000 && rec.exercises?.length > 0) {
-            doneExercisesRef.current = rec.exercises;
-            setPendingDone({ exercises: rec.exercises, completedSets: rec.completedSets, duration: rec.duration });
-          } else {
-            localStorage.removeItem(doneKey(userId));
-          }
         }
       } catch {}
     }

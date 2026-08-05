@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Dumbbell, Flame, Calendar, TrendingUp, Plus, Play, ClipboardList } from "lucide-react";
 import Link from "next/link";
 import { ActiveWorkoutBanner } from "@/components/ActiveWorkoutBanner";
+import { PendingProgramBanner } from "@/components/PendingProgramBanner";
 
 async function getStats(userId: string) {
   const weekAgo = new Date();
@@ -58,6 +59,9 @@ export default async function HomePage() {
 
       {/* Resume active workout banner (client — reads user-scoped localStorage) */}
       <ActiveWorkoutBanner userId={session.user.id} />
+
+      {/* Suggest creating a program from the last free workout */}
+      <PendingProgramBanner userId={session.user.id} />
 
       {/* Active programs quick-start */}
       {activeProgramsList.length > 0 ? (
