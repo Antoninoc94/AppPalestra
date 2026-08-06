@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -61,6 +61,12 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
   const doneExercisesRef = useRef<typeof logExercises>([]);
   const [pendingDone, setPendingDone] = useState<{ exercises: typeof logExercises; completedSets: number; duration: number } | null>(null);
   const [lastSessionData, setLastSessionData] = useState<Record<string, { date: string; sets: { weight: number | null; reps: number }[] }>>({});
+  const [localExercises, setLocalExercises] = useState<PickerExercise[]>(allExercises);
+  const [showCreateEx, setShowCreateEx] = useState(false);
+  const [createExName, setCreateExName] = useState("");
+  const [createExMuscleId, setCreateExMuscleId] = useState("");
+  const [createExDifficulty, setCreateExDifficulty] = useState("intermediate");
+  const [creatingEx, setCreatingEx] = useState(false);
 
   function clearWorkoutStorage() {
     if (serverSyncRef.current) { clearTimeout(serverSyncRef.current); serverSyncRef.current = null; }
@@ -419,14 +425,51 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
 
   const completedSets = logExercises.flatMap((ex) => ex.sets).filter((s) => s.done).length;
   const totalSets = logExercises.flatMap((ex) => ex.sets).length;
-  const muscleGroups = Array.from(new Set(allExercises.map((ex) => ex.primaryMuscle.nameIt))).sort();
+  const muscleGroups = useMemo(() =>
+    Array.from(new Set(localExercises.map((ex) => ex.primaryMuscle.nameIt))).sort()
+  , [localExercises]);
 
-  const filteredFreeEx = allExercises.filter((ex) => {
+  const uniqueMusclesForCreate = useMemo(() => {
+    const seen = new Map<string, { id: string; nameIt: string }>();
+    localExercises.forEach((ex) => {
+      if (!seen.has(ex.primaryMuscle.id)) seen.set(ex.primaryMuscle.id, { id: ex.primaryMuscle.id, nameIt: ex.primaryMuscle.nameIt });
+    });
+    return Array.from(seen.values()).sort((a, b) => a.nameIt.localeCompare(b.nameIt));
+  }, [localExercises]);
+
+  const filteredFreeEx = localExercises.filter((ex) => {
     const q = freeExSearch.toLowerCase();
     const matchName = !freeExSearch || (ex.nameIt ?? ex.name).toLowerCase().includes(q) || ex.name.toLowerCase().includes(q);
     const matchMuscle = !muscleFilter || ex.primaryMuscle.nameIt === muscleFilter;
     return matchName && matchMuscle;
   });
+
+  async function createCustomExercise() {
+    if (!createExName.trim() || !createExMuscleId) return;
+    setCreatingEx(true);
+    try {
+      const res = await fetch("/api/exercises", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: createExName.trim(), nameIt: createExName.trim(), primaryMuscleId: createExMuscleId, category: "custom", difficulty: createExDifficulty }),
+      });
+      if (res.ok) {
+        const newEx = await res.json();
+        const pickerEx: PickerExercise = {
+          id: newEx.id, name: newEx.name, nameIt: newEx.nameIt, description: null,
+          primaryMuscle: newEx.primaryMuscle, secondaryMuscles: [], equipment: [],
+          category: newEx.category, difficulty: newEx.difficulty, isCustom: true,
+        };
+        setLocalExercises((prev) => [pickerEx, ...prev]);
+        addFreeExercise(pickerEx);
+        setShowCreateEx(false);
+        setCreateExName("");
+        setCreateExMuscleId("");
+      }
+    } finally {
+      setCreatingEx(false);
+    }
+  }
 
   // ── DONE ─────────────────────────────────────────────────────────────────
   if (phase === "done") {
@@ -768,64 +811,62 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
                         );
                       })()}
 
+                      {/* Set header labels */}
+                      <div className="grid grid-cols-[20px_1fr_1fr_52px] gap-1.5 px-0.5 mb-0.5">
+                        <span />
+                        <span className="text-[10px] text-zinc-600 text-center font-medium uppercase tracking-wider">Peso (kg)</span>
+                        <span className="text-[10px] text-zinc-600 text-center font-medium uppercase tracking-wider">Reps</span>
+                        <span />
+                      </div>
+
                       {ex.sets.map((set, setI) => {
                         const wt = (delta: number) => updateSet(exI, setI, "weight", Math.max(0, Math.round(((set.weight ?? 0) + delta) * 10) / 10));
                         const rp = (delta: number) => updateSet(exI, setI, "reps", Math.max(1, set.reps + delta));
-                        const btnCls = "shrink-0 rounded-lg bg-zinc-800 border border-zinc-700 h-9 px-2.5 text-xs font-semibold text-zinc-300 active:bg-zinc-700 select-none transition-colors hover:bg-zinc-700";
+                        const done = set.done;
+                        const cellBtn = "h-9 w-8 shrink-0 flex items-center justify-center text-zinc-400 text-base active:bg-zinc-700 transition-colors select-none";
                         return (
-                          <div key={setI} className={`rounded-xl border p-3 space-y-2.5 transition-colors ${set.done ? "bg-green-500/5 border-green-500/20" : "bg-zinc-900/80 border-zinc-800"}`}>
-                            {/* Header */}
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs font-semibold text-zinc-400">Serie {setI + 1}</span>
-                              <button
-                                onClick={() => toggleSetDone(exI, setI)}
-                                className={`flex items-center gap-1.5 rounded-lg h-7 px-3 text-xs font-semibold transition-all ${
-                                  set.done ? "bg-green-500 text-white" : "bg-zinc-800 border border-zinc-700 text-zinc-400 active:bg-zinc-700"
-                                }`}
-                              >
-                                <Check className="h-3 w-3" />
-                                {set.done ? "Completata" : "Segna fatto"}
-                              </button>
-                            </div>
+                          <div
+                            key={setI}
+                            className={`grid grid-cols-[20px_1fr_1fr_52px] gap-1.5 items-center rounded-xl px-0.5 py-1 transition-colors ${done ? "bg-green-500/8" : ""}`}
+                          >
+                            <span className={`text-xs font-bold text-center ${done ? "text-green-400" : "text-zinc-600"}`}>{setI + 1}</span>
 
                             {/* Weight */}
-                            <div>
-                              <p className="text-[10px] text-zinc-500 uppercase tracking-wider font-medium mb-1.5">Peso (kg)</p>
-                              <div className="flex items-center gap-1">
-                                <button type="button" onClick={() => wt(-2.5)} className={btnCls}>−2.5</button>
-                                <button type="button" onClick={() => wt(-1)} className={btnCls}>−1</button>
-                                <input
-                                  type="number"
-                                  inputMode="decimal"
-                                  value={set.weight ?? ""}
-                                  onChange={(e) => updateSet(exI, setI, "weight", e.target.value ? parseFloat(e.target.value) : null)}
-                                  placeholder="—"
-                                  className="flex-1 min-w-0 rounded-lg border border-zinc-700 bg-zinc-800 text-sm text-center py-2 focus:outline-none focus:border-orange-500 text-zinc-100 placeholder:text-zinc-600"
-                                  step={2.5}
-                                />
-                                <button type="button" onClick={() => wt(+1)} className={btnCls}>+1</button>
-                                <button type="button" onClick={() => wt(+2.5)} className={btnCls}>+2.5</button>
-                              </div>
+                            <div className={`flex items-center rounded-lg overflow-hidden border ${done ? "border-green-500/25 bg-green-500/5" : "border-zinc-700 bg-zinc-800"}`}>
+                              <button type="button" onClick={() => wt(-2.5)} className={cellBtn}>−</button>
+                              <input
+                                type="number" inputMode="decimal"
+                                value={set.weight ?? ""}
+                                onChange={(e) => updateSet(exI, setI, "weight", e.target.value ? parseFloat(e.target.value) : null)}
+                                placeholder="—"
+                                className="flex-1 min-w-0 bg-transparent text-sm text-center py-2 focus:outline-none text-zinc-100 placeholder:text-zinc-600"
+                                step={2.5}
+                              />
+                              <button type="button" onClick={() => wt(+2.5)} className={cellBtn}>+</button>
                             </div>
 
                             {/* Reps */}
-                            <div>
-                              <p className="text-[10px] text-zinc-500 uppercase tracking-wider font-medium mb-1.5">Ripetizioni</p>
-                              <div className="flex items-center gap-1">
-                                <button type="button" onClick={() => rp(-2)} className={btnCls}>−2</button>
-                                <button type="button" onClick={() => rp(-1)} className={btnCls}>−1</button>
-                                <input
-                                  type="number"
-                                  inputMode="numeric"
-                                  value={set.reps}
-                                  onChange={(e) => updateSet(exI, setI, "reps", Math.max(1, parseInt(e.target.value) || 1))}
-                                  className="flex-1 min-w-0 rounded-lg border border-zinc-700 bg-zinc-800 text-sm text-center py-2 focus:outline-none focus:border-orange-500 text-zinc-100"
-                                  min={1}
-                                />
-                                <button type="button" onClick={() => rp(+1)} className={btnCls}>+1</button>
-                                <button type="button" onClick={() => rp(+2)} className={btnCls}>+2</button>
-                              </div>
+                            <div className={`flex items-center rounded-lg overflow-hidden border ${done ? "border-green-500/25 bg-green-500/5" : "border-zinc-700 bg-zinc-800"}`}>
+                              <button type="button" onClick={() => rp(-1)} className={cellBtn}>−</button>
+                              <input
+                                type="number" inputMode="numeric"
+                                value={set.reps}
+                                onChange={(e) => updateSet(exI, setI, "reps", Math.max(1, parseInt(e.target.value) || 1))}
+                                className="flex-1 min-w-0 bg-transparent text-sm text-center py-2 focus:outline-none text-zinc-100"
+                                min={1}
+                              />
+                              <button type="button" onClick={() => rp(+1)} className={cellBtn}>+</button>
                             </div>
+
+                            {/* Done */}
+                            <button
+                              onClick={() => toggleSetDone(exI, setI)}
+                              className={`h-9 rounded-lg text-xs font-bold transition-all flex items-center justify-center ${
+                                done ? "bg-green-500 text-white shadow-sm shadow-green-900/40" : "bg-zinc-800 border border-zinc-700 text-zinc-500 active:bg-zinc-700"
+                              }`}
+                            >
+                              {done ? <Check className="h-4 w-4" /> : "OK"}
+                            </button>
                           </div>
                         );
                       })}
@@ -948,91 +989,170 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
           <div className="bg-zinc-950 rounded-t-2xl sm:rounded-2xl flex flex-col w-full sm:max-w-2xl sm:shadow-2xl" style={{ height: "85svh" }}>
             {/* Header */}
             <div className="px-5 py-4 border-b border-zinc-800 flex items-center justify-between shrink-0">
-              <div>
-                <h3 className="font-bold text-base">Aggiungi esercizio</h3>
-                {filteredFreeEx.length > 0 && (
-                  <p className="text-zinc-500 text-xs mt-0.5">{filteredFreeEx.length} esercizi{muscleFilter ? ` · ${muscleFilter}` : ""}</p>
+              <div className="flex items-center gap-2">
+                {showCreateEx && (
+                  <button onClick={() => setShowCreateEx(false)} className="rounded-xl p-1.5 text-zinc-400 hover:bg-zinc-800 transition-colors">
+                    <ChevronDown className="h-4 w-4 rotate-90" />
+                  </button>
                 )}
+                <div>
+                  <h3 className="font-bold text-base">{showCreateEx ? "Nuovo esercizio" : "Aggiungi esercizio"}</h3>
+                  {!showCreateEx && filteredFreeEx.length > 0 && (
+                    <p className="text-zinc-500 text-xs mt-0.5">{filteredFreeEx.length} esercizi{muscleFilter ? ` · ${muscleFilter}` : ""}</p>
+                  )}
+                </div>
               </div>
               <button
-                onClick={() => { setShowExPicker(false); setFreeExSearch(""); setMuscleFilter(""); }}
+                onClick={() => { setShowExPicker(false); setFreeExSearch(""); setMuscleFilter(""); setShowCreateEx(false); }}
                 className="rounded-xl p-2 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-colors"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            {/* Search + filters */}
-            <div className="px-5 pt-3 pb-2 shrink-0 space-y-2.5">
-              <input
-                type="search"
-                placeholder="Cerca esercizio..."
-                value={freeExSearch}
-                onChange={(e) => setFreeExSearch(e.target.value)}
-                className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-2.5 text-sm focus:outline-none focus:border-orange-500 text-zinc-100 placeholder:text-zinc-500"
-                autoFocus
-              />
-              <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-0.5">
+            {showCreateEx ? (
+              /* ── Create custom exercise form ── */
+              <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+                <div>
+                  <label className="text-xs font-medium text-zinc-400 mb-1.5 block">Nome esercizio *</label>
+                  <input
+                    type="text"
+                    value={createExName}
+                    onChange={(e) => setCreateExName(e.target.value)}
+                    placeholder="es. Romanian Deadlift"
+                    className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-orange-500 focus:outline-none"
+                    autoFocus
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-zinc-400 mb-1.5 block">Gruppo muscolare *</label>
+                  <div className="flex flex-wrap gap-2">
+                    {uniqueMusclesForCreate.map((mg) => (
+                      <button
+                        key={mg.id}
+                        onClick={() => setCreateExMuscleId(mg.id)}
+                        className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${createExMuscleId === mg.id ? "bg-orange-500 text-white" : "bg-zinc-800 text-zinc-300"}`}
+                      >
+                        {mg.nameIt}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-zinc-400 mb-1.5 block">Difficoltà</label>
+                  <div className="flex gap-2">
+                    {[{ v: "beginner", l: "Principiante" }, { v: "intermediate", l: "Intermedio" }, { v: "advanced", l: "Avanzato" }].map(({ v, l }) => (
+                      <button
+                        key={v}
+                        onClick={() => setCreateExDifficulty(v)}
+                        className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${createExDifficulty === v ? "bg-orange-500 text-white" : "bg-zinc-800 text-zinc-300"}`}
+                      >
+                        {l}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 px-3 py-2.5 flex items-start gap-2">
+                  <span className="text-zinc-500 text-xs mt-0.5">💡</span>
+                  <p className="text-zinc-500 text-xs leading-relaxed">L&apos;esercizio verrà salvato nel database e contrassegnato come <span className="text-orange-400 font-medium">personalizzato</span>.</p>
+                </div>
                 <button
-                  onClick={() => setMuscleFilter("")}
-                  className={`shrink-0 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-                    !muscleFilter ? "bg-orange-500 text-white" : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
-                  }`}
+                  onClick={createCustomExercise}
+                  disabled={!createExName.trim() || !createExMuscleId || creatingEx}
+                  className="w-full rounded-xl bg-orange-500 text-white font-semibold py-3 text-sm disabled:opacity-40 transition-opacity active:bg-orange-600"
                 >
-                  <Filter className="h-3 w-3" />
-                  Tutti
+                  {creatingEx ? "Salvataggio..." : "Salva e aggiungi"}
                 </button>
-                {muscleGroups.map((m) => (
-                  <button
-                    key={m}
-                    onClick={() => setMuscleFilter(m === muscleFilter ? "" : m)}
-                    className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-                      muscleFilter === m ? "bg-orange-500 text-white" : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
-                    }`}
-                  >
-                    {m}
-                  </button>
-                ))}
               </div>
-            </div>
-
-            {/* Exercise list */}
-            <div className="overflow-y-auto flex-1 px-5 pb-10">
-              {filteredFreeEx.length === 0 ? (
-                <div className="text-center py-12 text-zinc-500">
-                  <Dumbbell className="h-8 w-8 mx-auto mb-2 opacity-20" />
-                  <p className="text-sm">Nessun esercizio trovato</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-                  {filteredFreeEx.map((ex) => (
-                    <div
-                      key={ex.id}
-                      className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900 p-3.5 hover:border-orange-500/30 hover:bg-zinc-800/60 transition-colors group"
+            ) : (
+              <>
+                {/* Search + filters */}
+                <div className="px-5 pt-3 pb-2 shrink-0 space-y-2.5">
+                  <input
+                    type="search"
+                    placeholder="Cerca esercizio..."
+                    value={freeExSearch}
+                    onChange={(e) => setFreeExSearch(e.target.value)}
+                    className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-2.5 text-sm focus:outline-none focus:border-orange-500 text-zinc-100 placeholder:text-zinc-500"
+                    autoFocus
+                  />
+                  <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-0.5">
+                    <button
+                      onClick={() => setMuscleFilter("")}
+                      className={`shrink-0 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                        !muscleFilter ? "bg-orange-500 text-white" : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+                      }`}
                     >
+                      <Filter className="h-3 w-3" />
+                      Tutti
+                    </button>
+                    {muscleGroups.map((m) => (
                       <button
-                        onClick={() => addFreeExercise(ex)}
-                        className="flex-1 text-left min-w-0 flex items-center gap-3"
+                        key={m}
+                        onClick={() => setMuscleFilter(m === muscleFilter ? "" : m)}
+                        className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                          muscleFilter === m ? "bg-orange-500 text-white" : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+                        }`}
                       >
-                        <div className="rounded-lg bg-orange-500/10 p-2 shrink-0 group-hover:bg-orange-500/20 transition-colors">
-                          <Dumbbell className="h-3.5 w-3.5 text-orange-400" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="font-medium text-sm leading-tight truncate">{ex.nameIt ?? ex.name}</p>
-                          <p className="text-zinc-500 text-xs mt-0.5">{ex.primaryMuscle.nameIt}</p>
-                        </div>
+                        {m}
                       </button>
-                      <button
-                        onClick={() => setInfoExercise(ex as ExerciseWithRelations)}
-                        className="shrink-0 p-1.5 text-zinc-600 hover:text-orange-400 transition-colors"
-                      >
-                        <Info className="h-4 w-4" />
-                      </button>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              )}
-            </div>
+
+                {/* Exercise list */}
+                <div className="overflow-y-auto flex-1 px-5 pb-4">
+                  {filteredFreeEx.length === 0 ? (
+                    <div className="text-center py-12 text-zinc-500">
+                      <Dumbbell className="h-8 w-8 mx-auto mb-2 opacity-20" />
+                      <p className="text-sm">Nessun esercizio trovato</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                      {filteredFreeEx.map((ex) => (
+                        <div
+                          key={ex.id}
+                          className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900 p-3.5 hover:border-orange-500/30 hover:bg-zinc-800/60 transition-colors group"
+                        >
+                          <button
+                            onClick={() => addFreeExercise(ex)}
+                            className="flex-1 text-left min-w-0 flex items-center gap-3"
+                          >
+                            <div className="rounded-lg bg-orange-500/10 p-2 shrink-0 group-hover:bg-orange-500/20 transition-colors">
+                              <Dumbbell className="h-3.5 w-3.5 text-orange-400" />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <p className="font-medium text-sm leading-tight truncate">{ex.nameIt ?? ex.name}</p>
+                                {ex.isCustom && <span className="shrink-0 rounded-full bg-orange-500/15 text-orange-400 text-[9px] font-bold px-1.5 py-0.5 leading-none">TUO</span>}
+                              </div>
+                              <p className="text-zinc-500 text-xs mt-0.5">{ex.primaryMuscle.nameIt}</p>
+                            </div>
+                          </button>
+                          <button
+                            onClick={() => setInfoExercise(ex as ExerciseWithRelations)}
+                            className="shrink-0 p-1.5 text-zinc-600 hover:text-orange-400 transition-colors"
+                          >
+                            <Info className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer: create custom exercise */}
+                <div className="px-5 pb-6 pt-2 border-t border-zinc-800 shrink-0">
+                  <button
+                    onClick={() => { setShowCreateEx(true); setFreeExSearch(""); }}
+                    className="w-full flex items-center justify-center gap-2 rounded-xl border border-dashed border-zinc-700 py-3 text-sm text-zinc-400 font-medium hover:border-orange-500/40 hover:text-orange-400 transition-colors active:bg-zinc-900"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Non trovi l&apos;esercizio? Crealo tu
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
