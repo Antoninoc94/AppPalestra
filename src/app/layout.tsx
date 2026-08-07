@@ -21,7 +21,7 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     ...(s.faviconBase64
       ? { icons: { icon: s.faviconBase64, apple: s.faviconBase64 } }
-      : { icons: { icon: "/icon-192.png", apple: "/apple-icon.png" } }),
+      : { icons: { icon: "/favicon.svg", apple: "/favicon.svg" } }),
   };
 }
 
@@ -44,9 +44,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         {colorCss && (
           <style dangerouslySetInnerHTML={{ __html: colorCss }} />
         )}
-        {settings.faviconBase64 && (
-          <link rel="icon" href={settings.faviconBase64} />
-        )}
+        <link rel="icon" href={settings.faviconBase64 ?? "/favicon.svg"} />
       </head>
       <body className="min-h-full bg-zinc-950 text-zinc-100 antialiased">
         {isLoggedIn && <TopHeader logoBase64={settings.logoBase64} appName={settings.appName} />}

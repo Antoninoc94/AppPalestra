@@ -9,24 +9,19 @@ interface TopHeaderProps {
 
 export function TopHeader({ logoBase64, appName }: TopHeaderProps) {
   const name = appName || "Gym App";
+  const logoSrc = logoBase64 ?? "/logo.svg";
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 border-b border-zinc-800/60 bg-zinc-950/95 backdrop-blur-sm">
-      <div className="mx-auto flex max-w-lg items-center gap-2.5 px-4 h-12">
-        {logoBase64 ? (
-          <Image
-            src={logoBase64}
-            alt={name}
-            width={200}
-            height={36}
-            className="h-8 w-auto object-contain flex-shrink-0"
-            unoptimized
-          />
-        ) : (
-          <span className="text-sm font-semibold text-zinc-100 tracking-tight truncate">
-            {name}
-          </span>
-        )}
+      <div className="mx-auto flex max-w-lg items-center px-4 h-12">
+        <Image
+          src={logoSrc}
+          alt={name}
+          width={280}
+          height={40}
+          className="h-7 w-auto object-contain"
+          unoptimized
+        />
       </div>
     </header>
   );
