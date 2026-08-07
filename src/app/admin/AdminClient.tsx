@@ -62,6 +62,7 @@ export function AdminClient({
   // Branding state
   const [appName, setAppName] = useState(initialSettings.appName);
   const [primaryColor, setPrimaryColor] = useState(initialSettings.primaryColor);
+  const [hexInput, setHexInput] = useState(initialSettings.primaryColor.replace(/^#/, ""));
   const [logoBase64, setLogoBase64] = useState<string | null>(initialSettings.logoBase64);
   const [faviconBase64, setFaviconBase64] = useState<string | null>(initialSettings.faviconBase64);
   const [savingBranding, setSavingBranding] = useState(false);
@@ -297,7 +298,7 @@ export function AdminClient({
               {PRESET_COLORS.map((c) => (
                 <button
                   key={c.value}
-                  onClick={() => setPrimaryColor(c.value)}
+                  onClick={() => { setPrimaryColor(c.value); setHexInput(c.value.replace(/^#/, "").toUpperCase()); }}
                   title={c.label}
                   className="w-8 h-8 rounded-full border-2 transition-all"
                   style={{
@@ -311,7 +312,7 @@ export function AdminClient({
                 <input
                   type="color"
                   value={primaryColor}
-                  onChange={(e) => setPrimaryColor(e.target.value)}
+                  onChange={(e) => { setPrimaryColor(e.target.value); setHexInput(e.target.value.replace(/^#/, "").toUpperCase()); }}
                   className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
                   title="Colore personalizzato"
                 />
@@ -330,9 +331,10 @@ export function AdminClient({
               <span className="text-[11px] text-zinc-500">#</span>
               <input
                 type="text"
-                value={primaryColor.replace(/^#/, "")}
+                value={hexInput}
                 onChange={(e) => {
-                  const val = e.target.value.replace(/[^0-9a-fA-F]/g, "").slice(0, 6);
+                  const val = e.target.value.replace(/[^0-9a-fA-F]/g, "").slice(0, 6).toUpperCase();
+                  setHexInput(val);
                   if (val.length === 6) setPrimaryColor("#" + val);
                 }}
                 placeholder="E8FF00"

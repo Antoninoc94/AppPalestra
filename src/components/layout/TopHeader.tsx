@@ -17,9 +17,9 @@ export function TopHeader({ logoBase64, appName }: TopHeaderProps) {
         <Image
           src={logoSrc}
           alt={name}
-          width={280}
-          height={40}
-          className="h-7 w-auto object-contain"
+          width={320}
+          height={48}
+          className="h-9 w-auto object-contain"
           unoptimized
         />
       </div>
