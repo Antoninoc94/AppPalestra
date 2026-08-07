@@ -24,9 +24,18 @@ body {
   padding-bottom: env(safe-area-inset-bottom, 8px);
 }
 
+.pt-safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
 /* main content bottom padding: nav height (64px) + safe area */
 .pb-main {
   padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
+}
+
+/* main content top padding: header height (48px) + safe area */
+.pt-main {
+  padding-top: calc(3rem + env(safe-area-inset-top, 0px));
 }
 
 /* smooth scrolling */

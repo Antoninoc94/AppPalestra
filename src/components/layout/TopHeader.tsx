@@ -12,7 +12,7 @@ export function TopHeader({ logoBase64, appName }: TopHeaderProps) {
   const logoSrc = logoBase64 ?? "/logo.svg";
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 border-b border-zinc-800/60 bg-zinc-950/95 backdrop-blur-sm">
+    <header className="fixed top-0 left-0 right-0 z-50 border-b border-zinc-800/60 bg-zinc-950/95 backdrop-blur-sm pt-safe-top">
       <div className="mx-auto flex max-w-lg items-center px-4 h-12">
         <Image
           src={logoSrc}

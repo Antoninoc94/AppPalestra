@@ -51,7 +51,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </head>
       <body className="min-h-full bg-zinc-950 text-zinc-100 antialiased">
         {isLoggedIn && <TopHeader logoBase64={settings.logoBase64} appName={settings.appName} />}
-        <main className={`mx-auto max-w-lg min-h-screen pb-main ${isLoggedIn ? "pt-12" : ""}`}>
+        <main className={`mx-auto max-w-lg min-h-screen pb-main ${isLoggedIn ? "pt-main" : ""}`}>
           {children}
         </main>
         {isLoggedIn && <BottomNav />}
