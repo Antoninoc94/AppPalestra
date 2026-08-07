@@ -42,11 +42,23 @@ export function hexToRgb(hex: string): string {
   return `${r},${g},${b}`;
 }
 
+export function getContrastColor(hex: string): string {
+  if (!isValidHex(hex)) return "#ffffff";
+  const clean = hex.replace("#", "");
+  const r = parseInt(clean.slice(0, 2), 16);
+  const g = parseInt(clean.slice(2, 4), 16);
+  const b = parseInt(clean.slice(4, 6), 16);
+  const lin = (c: number) => { const s = c / 255; return s <= 0.04045 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4); };
+  const L = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+  return L > 0.179 ? "#000000" : "#ffffff";
+}
+
 export function buildPrimaryColorCss(hex: string): string {
   if (!isValidHex(hex) || hex === "#f97316") return "";
   const rgb = hexToRgb(hex);
+  const textColor = getContrastColor(hex);
   return `
-:root{--app-primary:${hex};--app-primary-rgb:${rgb}}
+:root{--app-primary:${hex};--app-primary-rgb:${rgb};--app-primary-text:${textColor}}
 .bg-orange-500{background-color:var(--app-primary)!important}
 .bg-orange-400{background-color:color-mix(in srgb,var(--app-primary),white 20%)!important}
 .bg-orange-600{background-color:color-mix(in srgb,var(--app-primary),black 15%)!important}
@@ -80,5 +92,7 @@ export function buildPrimaryColorCss(hex: string): string {
 .hover\\:text-orange-300:hover{color:color-mix(in srgb,var(--app-primary),white 40%)!important}
 .hover\\:text-orange-400:hover{color:color-mix(in srgb,var(--app-primary),white 15%)!important}
 .ring-orange-500{--tw-ring-color:var(--app-primary)!important}
+.bg-orange-500.text-white,.bg-orange-600.text-white,.bg-orange-700.text-white,.bg-orange-400.text-white{color:var(--app-primary-text)!important}
+.from-orange-500 .text-white,.from-orange-500 .text-orange-100{color:var(--app-primary-text)!important}
 `.trim();
 }
