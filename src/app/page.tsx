@@ -112,6 +112,9 @@ export default async function HomePage() {
 
   const now = new Date();
 
+  const nowItaly = new Date(now.toLocaleString("en-US", { timeZone: "Europe/Rome" }));
+  const todayDow = nowItaly.getDay();
+
   const hour = parseInt(
     now.toLocaleString("en-US", { timeZone: "Europe/Rome", hour: "numeric", hour12: false })
   );
@@ -195,28 +198,50 @@ export default async function HomePage() {
             <ClipboardList className="h-3.5 w-3.5" />
             Schede attive
           </h2>
-          {activeProgramsList.map((program) => (
-            <div key={program.id} className="space-y-2">
-              {activeProgramsList.length > 1 && (
-                <p className="text-xs text-zinc-500 font-medium pl-1">{program.name}</p>
-              )}
-              {program.days.map((day) => (
-                <Link key={day.id} href="/workout">
-                  <div className="flex items-center justify-between rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3.5 hover:border-orange-500/40 active:bg-zinc-800 transition-all">
-                    <div>
-                      <p className="font-semibold text-sm">{day.name}</p>
-                      <p className="text-zinc-500 text-xs mt-0.5">
-                        {program.name} · {day._count.exercises} esercizi
-                      </p>
-                    </div>
-                    <div className="rounded-xl bg-orange-500/10 p-2.5">
-                      <Play className="h-4 w-4 text-orange-400 fill-current" />
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          ))}
+          {activeProgramsList.map((program) => {
+            const sortedDays = [...program.days].sort((a, b) => {
+              const aToday = (a.weekDays ?? []).includes(todayDow) ? -1 : 1;
+              const bToday = (b.weekDays ?? []).includes(todayDow) ? -1 : 1;
+              return aToday - bToday;
+            });
+            return (
+              <div key={program.id} className="space-y-2">
+                {activeProgramsList.length > 1 && (
+                  <p className="text-xs text-zinc-500 font-medium pl-1">{program.name}</p>
+                )}
+                {sortedDays.map((day) => {
+                  const isToday = (day.weekDays ?? []).includes(todayDow);
+                  return (
+                    <Link key={day.id} href="/workout">
+                      <div className={cn(
+                        "flex items-center justify-between rounded-2xl border px-4 py-3.5 transition-all",
+                        isToday
+                          ? "border-orange-500/50 bg-orange-500/5 hover:bg-orange-500/10 active:bg-orange-500/15"
+                          : "border-zinc-800 bg-zinc-900 hover:border-orange-500/40 active:bg-zinc-800"
+                      )}>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <p className="font-semibold text-sm">{day.name}</p>
+                            {isToday && (
+                              <span className="rounded-full bg-orange-500 px-2 py-0.5 text-[10px] font-bold text-white">
+                                OGGI
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-zinc-500 text-xs mt-0.5">
+                            {program.name} · {day._count.exercises} esercizi
+                          </p>
+                        </div>
+                        <div className={cn("rounded-xl p-2.5", isToday ? "bg-orange-500" : "bg-orange-500/10")}>
+                          <Play className={cn("h-4 w-4 fill-current", isToday ? "text-white" : "text-orange-400")} />
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            );
+          })}
           <Link href="/workout">
             <div className="flex items-center justify-center gap-2 rounded-2xl border border-dashed border-zinc-700 px-4 py-3 text-zinc-500 text-sm hover:border-zinc-500 hover:text-zinc-300 transition-all">
               <Plus className="h-4 w-4" />

@@ -41,6 +41,7 @@ type ProgramDay = {
   id: string;
   name: string;
   dayNumber: number;
+  weekDays: number[];
   exercises: ProgramExercise[];
 };
 
@@ -64,12 +65,25 @@ type Program = {
   createdAt: Date | string;
 };
 
+const WEEK_DAYS = [
+  { label: "Lun", value: 1 },
+  { label: "Mar", value: 2 },
+  { label: "Mer", value: 3 },
+  { label: "Gio", value: 4 },
+  { label: "Ven", value: 5 },
+  { label: "Sab", value: 6 },
+  { label: "Dom", value: 0 },
+];
+
 export function ProgramDetailClient({ program: initial }: { program: Program }) {
   const router = useRouter();
   const [program, setProgram] = useState(initial);
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set([initial.days[0]?.id]));
   const [loading, setLoading] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [dayWeekDays, setDayWeekDays] = useState<Record<string, number[]>>(
+    Object.fromEntries(initial.days.map((d) => [d.id, d.weekDays ?? []]))
+  );
 
   function toggleDay(dayId: string) {
     setExpandedDays((prev) => {
@@ -95,6 +109,19 @@ export function ProgramDetailClient({ program: initial }: { program: Program }) 
     } finally {
       setLoading(false);
     }
+  }
+
+  async function toggleWeekDay(dayId: string, dow: number) {
+    const current = dayWeekDays[dayId] ?? [];
+    const updated = current.includes(dow)
+      ? current.filter((d) => d !== dow)
+      : [...current, dow];
+    setDayWeekDays((prev) => ({ ...prev, [dayId]: updated }));
+    await fetch(`/api/programs/${program.id}/days/${dayId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ weekDays: updated }),
+    });
   }
 
   async function deleteProgram() {
@@ -176,16 +203,38 @@ export function ProgramDetailClient({ program: initial }: { program: Program }) 
               >
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
-                    <div>
+                    <div className="flex-1 min-w-0">
                       <p className="font-semibold">{day.name}</p>
                       <p className="text-zinc-500 text-xs mt-0.5">
                         {day.exercises.length} esercizi
                       </p>
+                      {/* Weekday chips */}
+                      <div
+                        className="flex gap-1 mt-2 flex-wrap"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {WEEK_DAYS.map(({ label, value }) => {
+                          const active = (dayWeekDays[day.id] ?? []).includes(value);
+                          return (
+                            <button
+                              key={value}
+                              onClick={() => toggleWeekDay(day.id, value)}
+                              className={`rounded-full px-2 py-0.5 text-[10px] font-semibold transition-colors ${
+                                active
+                                  ? "bg-orange-500 text-white"
+                                  : "bg-zinc-800 text-zinc-500 hover:bg-zinc-700"
+                              }`}
+                            >
+                              {label}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                     {isOpen ? (
-                      <ChevronUp className="h-4 w-4 text-zinc-500 shrink-0" />
+                      <ChevronUp className="h-4 w-4 text-zinc-500 shrink-0 ml-3" />
                     ) : (
-                      <ChevronDown className="h-4 w-4 text-zinc-500 shrink-0" />
+                      <ChevronDown className="h-4 w-4 text-zinc-500 shrink-0 ml-3" />
                     )}
                   </div>
                 </CardContent>

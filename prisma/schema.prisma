@@ -101,6 +101,7 @@ model ProgramDay {
   programId String
   name      String
   dayNumber Int
+  weekDays  Int[]             @default([])
   exercises ProgramExercise[]
   sessions  WorkoutSession[]
   createdAt DateTime          @default(now())
