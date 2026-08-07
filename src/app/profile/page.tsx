@@ -7,7 +7,9 @@ import { ProfileClient } from "./ProfileClient";
 async function getProfileData(userId: string) {
   const now = new Date();
   const startOfWeek = new Date(now);
-  startOfWeek.setDate(now.getDate() - now.getDay()); // Sunday
+  const dow = now.getDay(); // 0=Sun
+  const daysFromMonday = dow === 0 ? 6 : dow - 1; // Mon=0 ... Sun=6
+  startOfWeek.setDate(now.getDate() - daysFromMonday);
   startOfWeek.setHours(0, 0, 0, 0);
 
   const [totalSessions, totalSetsResult, durationResult, user, prGroups, weekSessions] =

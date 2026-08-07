@@ -12,7 +12,10 @@ import {
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
+// Index = JS getDay() value (0=Sun ... 6=Sat)
 const DAYS = ["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"];
+// Display order: Mon(1) Tue(2) ... Sat(6) Sun(0)
+const DAYS_ORDER = [1, 2, 3, 4, 5, 6, 0];
 
 interface Props {
   username: string;
@@ -210,7 +213,7 @@ export function ProfileClient({
             <div className="space-y-2">
               <label className="text-xs text-zinc-400 font-medium">Giorni di allenamento</label>
               <div className="flex gap-1.5 flex-wrap">
-                {DAYS.map((label, i) => (
+                {DAYS_ORDER.map((i) => (
                   <button
                     key={i}
                     type="button"
@@ -222,7 +225,7 @@ export function ProfileClient({
                         : "bg-zinc-800 border border-zinc-700 text-zinc-500"
                     )}
                   >
-                    {label}
+                    {DAYS[i]}
                   </button>
                 ))}
               </div>
@@ -257,7 +260,8 @@ export function ProfileClient({
             <p className="text-xs font-bold text-orange-400">{trainedCount}/{plannedCount}</p>
           </div>
           <div className="flex gap-1.5">
-            {DAYS.map((label, i) => {
+            {DAYS_ORDER.map((i) => {
+              const label = DAYS[i];
               const planned = trainingDays.includes(i);
               const done = trainedDaysThisWeek.includes(i);
               return (
