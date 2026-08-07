@@ -326,7 +326,21 @@ export function AdminClient({
                 </div>
               </div>
             </div>
-            <p className="text-[11px] text-zinc-500">Colore selezionato: <span className="font-mono text-zinc-300">{primaryColor}</span></p>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-[11px] text-zinc-500">#</span>
+              <input
+                type="text"
+                value={primaryColor.replace(/^#/, "")}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/[^0-9a-fA-F]/g, "").slice(0, 6);
+                  if (val.length === 6) setPrimaryColor("#" + val);
+                }}
+                placeholder="E8FF00"
+                maxLength={6}
+                className="w-24 rounded-lg bg-zinc-800 border border-zinc-700 px-2 py-1 text-sm font-mono text-zinc-100 focus:outline-none focus:ring-2 focus:ring-orange-500 uppercase"
+              />
+              <div className="w-6 h-6 rounded-full border border-zinc-600 flex-shrink-0" style={{ backgroundColor: primaryColor }} />
+            </div>
           </div>
 
           {/* Logo */}
