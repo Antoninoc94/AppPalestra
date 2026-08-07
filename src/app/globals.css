@@ -19,9 +19,14 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* safe area insets for mobile notch */
+/* safe area insets for mobile */
 .pb-safe {
   padding-bottom: env(safe-area-inset-bottom, 8px);
+}
+
+/* main content bottom padding: nav height (64px) + safe area */
+.pb-main {
+  padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
 }
 
 /* smooth scrolling */

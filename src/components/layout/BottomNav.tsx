@@ -18,8 +18,8 @@ export function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-zinc-800 bg-zinc-950/95 backdrop-blur-sm">
-      <div className="mx-auto flex max-w-lg items-center justify-around px-1 py-1 pb-safe">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-zinc-800 bg-zinc-950/95 backdrop-blur-sm pb-safe">
+      <div className="mx-auto flex max-w-lg items-center justify-around px-1 py-1">
         {navItems.map(({ href, icon: Icon, label }) => {
           const isActive = pathname === href || (href !== "/" && pathname.startsWith(href));
           return (
