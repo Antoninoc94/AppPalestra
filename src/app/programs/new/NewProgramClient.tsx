@@ -514,7 +514,7 @@ export function NewProgramClient({ muscleGroups, equipment, exercises }: Props) 
                       className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-2.5 text-sm focus:outline-none focus:border-orange-500"
                       autoFocus />
                   </div>
-                  <div className="overflow-y-auto flex-1 px-4 pb-10 space-y-2">
+                  <div className="overflow-y-auto flex-1 px-4 space-y-2" style={{ paddingBottom: "calc(2.5rem + env(safe-area-inset-bottom, 0px))" }}>
                     {filtered.map((e) => (
                       <button key={e.id}
                         onClick={() => {
@@ -741,7 +741,7 @@ export function NewProgramClient({ muscleGroups, equipment, exercises }: Props) 
                 </div>
               )}
             </div>
-            <div className="overflow-y-auto flex-1 px-4 pb-10 space-y-2">
+            <div className="overflow-y-auto flex-1 px-4 space-y-2" style={{ paddingBottom: "calc(2.5rem + env(safe-area-inset-bottom, 0px))" }}>
               {filteredExercises.length === 0 ? (
                 <div className="text-center py-10 text-zinc-500">
                   <Dumbbell className="h-7 w-7 mx-auto mb-2 opacity-20" />

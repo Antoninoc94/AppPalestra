@@ -720,7 +720,7 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
 
   // ── ACTIVE ────────────────────────────────────────────────────────────────
   return (
-    <div className="pb-40">
+    <div style={{ paddingBottom: "calc(10rem + env(safe-area-inset-bottom, 0px))" }}>
       {/* Sticky header: timer / progress bar */}
       <div className="sticky top-0 z-20 bg-zinc-950/95 backdrop-blur-sm px-4 pt-4 pb-3 border-b border-zinc-800/50">
         <div className="flex items-center justify-between gap-3">
@@ -1023,7 +1023,7 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
 
             {showCreateEx ? (
               /* ── Create custom exercise form ── */
-              <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+              <div className="flex-1 overflow-y-auto px-5 pt-4 space-y-4" style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom, 0px))" }}>
                 <div>
                   <label className="text-xs font-medium text-zinc-400 mb-1.5 block">Nome esercizio *</label>
                   <input
@@ -1170,7 +1170,7 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
                 </div>
 
                 {/* Footer: create custom exercise */}
-                <div className="px-5 pb-6 pt-2 border-t border-zinc-800 shrink-0">
+                <div className="px-5 pt-2 border-t border-zinc-800 shrink-0" style={{ paddingBottom: "calc(1.5rem + env(safe-area-inset-bottom, 0px))" }}>
                   <button
                     onClick={() => { setShowCreateEx(true); setFreeExSearch(""); }}
                     className="w-full flex items-center justify-center gap-2 rounded-xl border border-dashed border-zinc-700 py-3 text-sm text-zinc-400 font-medium hover:border-orange-500/40 hover:text-orange-400 transition-colors active:bg-zinc-900"

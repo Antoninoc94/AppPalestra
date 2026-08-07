@@ -124,8 +124,7 @@ export function ExerciseInfoSheet({ exercise, onClose }: Props) {
           )}
         </div>
 
-        {/* Bottom padding for safe area */}
-        <div className="pb-8" />
+        <div className="pb-safe" style={{ paddingBottom: "calc(2rem + env(safe-area-inset-bottom, 0px))" }} />
       </div>
     </>
   );
