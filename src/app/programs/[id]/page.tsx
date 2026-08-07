@@ -11,33 +11,40 @@ export default async function ProgramDetailPage({ params }: { params: Promise<{ 
   if (!session?.user) redirect("/login");
   const userId = session.user.id;
 
-  const program = await prisma.program.findFirst({
-    where: { id, userId },
-    include: {
-      days: {
-        include: {
-          exercises: {
-            include: {
-              exercise: { include: { primaryMuscle: true } },
+  const [program, allExercises] = await Promise.all([
+    prisma.program.findFirst({
+      where: { id, userId },
+      include: {
+        days: {
+          include: {
+            exercises: {
+              include: {
+                exercise: { include: { primaryMuscle: true } },
+              },
+              orderBy: { order: "asc" },
             },
-            orderBy: { order: "asc" },
+          },
+          orderBy: { dayNumber: "asc" },
+        },
+        sessions: {
+          take: 5,
+          orderBy: { date: "desc" },
+          include: {
+            _count: { select: { sets: true } },
+            programDay: { select: { name: true } },
           },
         },
-        orderBy: { dayNumber: "asc" },
+        _count: { select: { sessions: true } },
       },
-      sessions: {
-        take: 5,
-        orderBy: { date: "desc" },
-        include: {
-          _count: { select: { sets: true } },
-          programDay: { select: { name: true } },
-        },
-      },
-      _count: { select: { sessions: true } },
-    },
-  });
+    }),
+    prisma.exercise.findMany({
+      where: { OR: [{ isCustom: false }, { userId }] },
+      include: { primaryMuscle: true },
+      orderBy: { name: "asc" },
+    }),
+  ]);
 
   if (!program) notFound();
 
-  return <ProgramDetailClient program={program} />;
+  return <ProgramDetailClient program={program} allExercises={allExercises} />;
 }

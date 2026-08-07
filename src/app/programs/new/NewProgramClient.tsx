@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, ChevronLeft, Dumbbell, Sparkles, GripVertical, X, RefreshCw, Info } from "lucide-react";
+import { Plus, Trash2, ChevronLeft, ChevronUp, ChevronDown, Dumbbell, Sparkles, X, RefreshCw, Info } from "lucide-react";
 import { getGoalLabel, getDifficultyLabel } from "@/lib/utils";
 import { ExerciseInfoSheet } from "@/components/ExerciseInfoSheet";
 import type { ExerciseWithRelations } from "@/types";
@@ -124,6 +124,19 @@ export function NewProgramClient({ muscleGroups, equipment, exercises }: Props) 
           ? { ...d, exercises: d.exercises.filter((_, j) => j !== exIndex) }
           : d
       )
+    );
+  }
+
+  function moveExercise(dayIndex: number, exIndex: number, direction: -1 | 1) {
+    setDays((prev) =>
+      prev.map((d, i) => {
+        if (i !== dayIndex) return d;
+        const exs = [...d.exercises];
+        const target = exIndex + direction;
+        if (target < 0 || target >= exs.length) return d;
+        [exs[exIndex], exs[target]] = [exs[target], exs[exIndex]];
+        return { ...d, exercises: exs };
+      })
     );
   }
 
@@ -592,12 +605,30 @@ export function NewProgramClient({ muscleGroups, equipment, exercises }: Props) 
 
               {days[activeDayIndex].exercises.map((ex, exI) => {
                 const stepCls = "w-8 h-8 flex items-center justify-center text-zinc-300 text-sm font-medium active:bg-zinc-700 shrink-0 select-none transition-colors hover:bg-zinc-700";
+                const totalEx = days[activeDayIndex].exercises.length;
                 return (
                 <Card key={exI}>
                   <CardContent className="p-3 space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 min-w-0">
-                        <GripVertical className="h-4 w-4 text-zinc-600 shrink-0" />
+                        <div className="flex flex-col shrink-0">
+                          <button
+                            type="button"
+                            disabled={exI === 0}
+                            onClick={() => moveExercise(activeDayIndex, exI, -1)}
+                            className="text-zinc-500 hover:text-zinc-300 disabled:opacity-20 disabled:cursor-not-allowed"
+                          >
+                            <ChevronUp className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={exI === totalEx - 1}
+                            onClick={() => moveExercise(activeDayIndex, exI, 1)}
+                            className="text-zinc-500 hover:text-zinc-300 disabled:opacity-20 disabled:cursor-not-allowed"
+                          >
+                            <ChevronDown className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
                         <p className="font-medium text-sm truncate">{ex.exerciseName}</p>
                         <button
                           onClick={() => setInfoExercise(exercises.find((e) => e.id === ex.exerciseId) ?? null)}
