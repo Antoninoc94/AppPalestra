@@ -18,10 +18,11 @@ export async function generateMetadata(): Promise<Metadata> {
       capable: true,
       statusBarStyle: "black-translucent",
       title: s.appName,
+      startupImage: "/apple-icon.png",
     },
     ...(s.faviconBase64
       ? { icons: { icon: s.faviconBase64, apple: s.faviconBase64 } }
-      : { icons: { icon: "/favicon.svg", apple: "/favicon.svg" } }),
+      : { icons: { icon: "/favicon.svg", apple: "/apple-icon.png" } }),
   };
 }
 
@@ -45,6 +46,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <style dangerouslySetInnerHTML={{ __html: colorCss }} />
         )}
         <link rel="icon" href={settings.faviconBase64 ?? "/favicon.svg"} />
+        <link rel="apple-touch-icon" href={settings.faviconBase64 ?? "/apple-icon.png"} />
       </head>
       <body className="min-h-full bg-zinc-950 text-zinc-100 antialiased">
         {isLoggedIn && <TopHeader logoBase64={settings.logoBase64} appName={settings.appName} />}

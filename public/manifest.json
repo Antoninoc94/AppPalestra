@@ -1,6 +1,6 @@
 {
-  "name": "App Palestra",
-  "short_name": "Palestra",
+  "name": "Iron Training",
+  "short_name": "Iron",
   "description": "Il tuo tracker personale per la palestra",
   "start_url": "/",
   "display": "standalone",
@@ -20,7 +20,12 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
+    },
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
     }
-  ],
-  "screenshots": []
+  ]
 }
