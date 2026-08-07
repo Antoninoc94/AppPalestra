@@ -58,6 +58,16 @@ export function NewProgramClient({ muscleGroups, equipment, exercises }: Props) 
   const [showPicker, setShowPicker] = useState(false);
   const [pickerSearch, setPickerSearch] = useState("");
   const [pickerMuscle, setPickerMuscle] = useState("");
+  const [pickerCategory, setPickerCategory] = useState("");
+
+  const EQUIPMENT_FILTERS = [
+    { value: "bilanciere",   label: "Bilanciere" },
+    { value: "manubri",      label: "Manubri" },
+    { value: "macchinario",  label: "Macchinari" },
+    { value: "cavi",         label: "Cavi" },
+    { value: "corpo_libero", label: "Corpo libero" },
+    { value: "kettlebell",   label: "Kettlebell" },
+  ];
 
   // Generator
   const [selectedMuscles, setSelectedMuscles] = useState<string[]>([]);
@@ -79,8 +89,9 @@ export function NewProgramClient({ muscleGroups, equipment, exercises }: Props) 
     const matchSearch =
       !pickerSearch ||
       (ex.nameIt ?? ex.name).toLowerCase().includes(pickerSearch.toLowerCase()) || ex.name.toLowerCase().includes(pickerSearch.toLowerCase());
+    const matchCat = !pickerCategory || ex.category === pickerCategory;
     const matchMuscle = !pickerMuscle || ex.primaryMuscle.id === pickerMuscle;
-    return matchSearch && matchMuscle;
+    return matchSearch && matchCat && matchMuscle;
   });
 
   function addExerciseToDay(ex: ExerciseWithRelations) {
@@ -687,13 +698,16 @@ export function NewProgramClient({ muscleGroups, equipment, exercises }: Props) 
       {showPicker && (
         <div className="fixed inset-0 z-[60] bg-black/80 flex flex-col justify-end">
           <div className="bg-zinc-950 rounded-t-2xl flex flex-col" style={{ height: "85svh" }}>
-            <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
-              <h3 className="font-semibold">Scegli esercizio</h3>
-              <button onClick={() => setShowPicker(false)}>
+            <div className="p-4 border-b border-zinc-800 flex items-center justify-between shrink-0">
+              <div>
+                <h3 className="font-semibold">Scegli esercizio</h3>
+                <p className="text-zinc-500 text-xs mt-0.5">{filteredExercises.length} esercizi</p>
+              </div>
+              <button onClick={() => { setShowPicker(false); setPickerSearch(""); setPickerCategory(""); setPickerMuscle(""); }}>
                 <X className="h-5 w-5 text-zinc-400" />
               </button>
             </div>
-            <div className="p-4 space-y-3">
+            <div className="px-4 pt-3 pb-2 shrink-0 space-y-2">
               <input
                 type="search"
                 placeholder="Cerca..."
@@ -702,21 +716,38 @@ export function NewProgramClient({ muscleGroups, equipment, exercises }: Props) 
                 className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-2.5 text-sm focus:outline-none focus:border-orange-500"
                 autoFocus
               />
-              <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
-                <button onClick={() => setPickerMuscle("")}
-                  className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium ${!pickerMuscle ? "bg-orange-500 text-white" : "bg-zinc-800 text-zinc-300"}`}>
+              {/* Equipment type filter (primary) */}
+              <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-0.5">
+                <button onClick={() => { setPickerCategory(""); setPickerMuscle(""); }}
+                  className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium ${!pickerCategory && !pickerMuscle ? "bg-orange-500 text-white" : "bg-zinc-800 text-zinc-300"}`}>
                   Tutti
                 </button>
-                {muscleGroups.map((mg) => (
-                  <button key={mg.id} onClick={() => setPickerMuscle(mg.id === pickerMuscle ? "" : mg.id)}
-                    className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium ${pickerMuscle === mg.id ? "bg-orange-500 text-white" : "bg-zinc-800 text-zinc-300"}`}>
-                    {mg.nameIt}
+                {EQUIPMENT_FILTERS.map(({ value, label }) => (
+                  <button key={value} onClick={() => { setPickerCategory(value === pickerCategory ? "" : value); setPickerMuscle(""); }}
+                    className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${pickerCategory === value ? "bg-orange-500 text-white" : "bg-zinc-800 text-zinc-300"}`}>
+                    {label}
                   </button>
                 ))}
               </div>
+              {/* Muscle filter (secondary) */}
+              {!pickerCategory && (
+                <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-0.5">
+                  {muscleGroups.map((mg) => (
+                    <button key={mg.id} onClick={() => setPickerMuscle(mg.id === pickerMuscle ? "" : mg.id)}
+                      className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors ${pickerMuscle === mg.id ? "bg-zinc-600 text-white" : "bg-zinc-900 border border-zinc-700 text-zinc-400"}`}>
+                      {mg.nameIt}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="overflow-y-auto flex-1 px-4 pb-10 space-y-2">
-              {filteredExercises.map((ex) => (
+              {filteredExercises.length === 0 ? (
+                <div className="text-center py-10 text-zinc-500">
+                  <Dumbbell className="h-7 w-7 mx-auto mb-2 opacity-20" />
+                  <p className="text-sm">Nessun esercizio trovato</p>
+                </div>
+              ) : filteredExercises.map((ex) => (
                 <div
                   key={ex.id}
                   className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900 p-3 hover:border-orange-500/50 transition-colors"
@@ -725,7 +756,10 @@ export function NewProgramClient({ muscleGroups, equipment, exercises }: Props) 
                     onClick={() => addExerciseToDay(ex)}
                     className="flex-1 text-left min-w-0"
                   >
-                    <p className="font-medium text-sm">{ex.nameIt ?? ex.name}</p>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <p className="font-medium text-sm truncate">{ex.nameIt ?? ex.name}</p>
+                      {ex.isCustom && <span className="shrink-0 rounded-full bg-orange-500/15 text-orange-400 text-[9px] font-bold px-1.5 py-0.5">TUO</span>}
+                    </div>
                     <p className="text-zinc-400 text-xs mt-0.5">{ex.primaryMuscle.nameIt}</p>
                   </button>
                   <button

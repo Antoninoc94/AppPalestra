@@ -52,6 +52,7 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
   const [showAbandonConfirm, setShowAbandonConfirm] = useState(false);
   const [noSetsError, setNoSetsError] = useState(false);
   const [muscleFilter, setMuscleFilter] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
   const [infoExercise, setInfoExercise] = useState<ExerciseWithRelations | null>(null);
   const [showCreateProgram, setShowCreateProgram] = useState(false);
   const [newProgramName, setNewProgramName] = useState("");
@@ -425,6 +426,15 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
 
   const completedSets = logExercises.flatMap((ex) => ex.sets).filter((s) => s.done).length;
   const totalSets = logExercises.flatMap((ex) => ex.sets).length;
+  const EQUIPMENT_FILTERS = [
+    { value: "bilanciere",   label: "Bilanciere" },
+    { value: "manubri",      label: "Manubri" },
+    { value: "macchinario",  label: "Macchinari" },
+    { value: "cavi",         label: "Cavi" },
+    { value: "corpo_libero", label: "Corpo libero" },
+    { value: "kettlebell",   label: "Kettlebell" },
+  ];
+
   const muscleGroups = useMemo(() =>
     Array.from(new Set(localExercises.map((ex) => ex.primaryMuscle.nameIt))).sort()
   , [localExercises]);
@@ -440,8 +450,9 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
   const filteredFreeEx = localExercises.filter((ex) => {
     const q = freeExSearch.toLowerCase();
     const matchName = !freeExSearch || (ex.nameIt ?? ex.name).toLowerCase().includes(q) || ex.name.toLowerCase().includes(q);
+    const matchCat = !categoryFilter || ex.category === categoryFilter;
     const matchMuscle = !muscleFilter || ex.primaryMuscle.nameIt === muscleFilter;
-    return matchName && matchMuscle;
+    return matchName && matchCat && matchMuscle;
   });
 
   async function createCustomExercise() {
@@ -1003,7 +1014,7 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
                 </div>
               </div>
               <button
-                onClick={() => { setShowExPicker(false); setFreeExSearch(""); setMuscleFilter(""); setShowCreateEx(false); }}
+                onClick={() => { setShowExPicker(false); setFreeExSearch(""); setMuscleFilter(""); setCategoryFilter(""); setShowCreateEx(false); }}
                 className="rounded-xl p-2 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-colors"
               >
                 <X className="h-5 w-5" />
@@ -1067,7 +1078,7 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
             ) : (
               <>
                 {/* Search + filters */}
-                <div className="px-5 pt-3 pb-2 shrink-0 space-y-2.5">
+                <div className="px-5 pt-3 pb-2 shrink-0 space-y-2">
                   <input
                     type="search"
                     placeholder="Cerca esercizio..."
@@ -1076,28 +1087,45 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
                     className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-2.5 text-sm focus:outline-none focus:border-orange-500 text-zinc-100 placeholder:text-zinc-500"
                     autoFocus
                   />
-                  <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-0.5">
+                  {/* Equipment type filter (primary) */}
+                  <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-0.5">
                     <button
-                      onClick={() => setMuscleFilter("")}
-                      className={`shrink-0 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-                        !muscleFilter ? "bg-orange-500 text-white" : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+                      onClick={() => { setCategoryFilter(""); setMuscleFilter(""); }}
+                      className={`shrink-0 flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                        !categoryFilter && !muscleFilter ? "bg-orange-500 text-white" : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
                       }`}
                     >
                       <Filter className="h-3 w-3" />
                       Tutti
                     </button>
-                    {muscleGroups.map((m) => (
+                    {EQUIPMENT_FILTERS.map(({ value, label }) => (
                       <button
-                        key={m}
-                        onClick={() => setMuscleFilter(m === muscleFilter ? "" : m)}
+                        key={value}
+                        onClick={() => { setCategoryFilter(value === categoryFilter ? "" : value); setMuscleFilter(""); }}
                         className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-                          muscleFilter === m ? "bg-orange-500 text-white" : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+                          categoryFilter === value ? "bg-orange-500 text-white" : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
                         }`}
                       >
-                        {m}
+                        {label}
                       </button>
                     ))}
                   </div>
+                  {/* Muscle filter (secondary, visible only when no category selected) */}
+                  {!categoryFilter && (
+                    <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-0.5">
+                      {muscleGroups.map((m) => (
+                        <button
+                          key={m}
+                          onClick={() => setMuscleFilter(m === muscleFilter ? "" : m)}
+                          className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                            muscleFilter === m ? "bg-zinc-600 text-white" : "bg-zinc-900 border border-zinc-700 text-zinc-400 hover:border-zinc-500"
+                          }`}
+                        >
+                          {m}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Exercise list */}
