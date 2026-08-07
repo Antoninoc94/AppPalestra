@@ -7,14 +7,20 @@ import { Button } from "@/components/ui/button";
 import {
   Lock, LogOut, Shield, Loader2, Eye, EyeOff,
   RotateCcw, AlertTriangle, Trophy, ChevronDown, ChevronUp,
-  Dumbbell, Calendar, Flame, Download,
+  Dumbbell, Calendar, Flame, Download, Pencil, Check, X,
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
+const DAYS = ["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"];
+
 interface Props {
   username: string;
   role: string;
+  firstName: string | null;
+  lastName: string | null;
+  trainingDays: number[];
+  trainedDaysThisWeek: number[];
   totalSessions: number;
   totalSets: number;
   totalDurationSeconds: number;
@@ -36,9 +42,19 @@ function formatMemberSince(date: Date): string {
 }
 
 export function ProfileClient({
-  username, role, totalSessions, totalSets,
-  totalDurationSeconds, memberSince, personalRecords,
+  username, role, firstName: initFirstName, lastName: initLastName,
+  trainingDays: initTrainingDays, trainedDaysThisWeek,
+  totalSessions, totalSets, totalDurationSeconds, memberSince, personalRecords,
 }: Props) {
+  // Profile edit state
+  const [firstName, setFirstName] = useState(initFirstName ?? "");
+  const [lastName, setLastName] = useState(initLastName ?? "");
+  const [trainingDays, setTrainingDays] = useState<number[]>(initTrainingDays);
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileMsg, setProfileMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  // Password state
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -51,7 +67,41 @@ export function ProfileClient({
   const [resetting, setResetting] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
 
-  const initials = username?.slice(0, 2).toUpperCase() ?? "??";
+  const displayName = (firstName || lastName)
+    ? [firstName, lastName].filter(Boolean).join(" ")
+    : username;
+
+  const initials = (() => {
+    if (firstName && lastName) return (firstName[0] + lastName[0]).toUpperCase();
+    if (firstName) return firstName.slice(0, 2).toUpperCase();
+    return username?.slice(0, 2).toUpperCase() ?? "??";
+  })();
+
+  function toggleDay(d: number) {
+    setTrainingDays((prev) =>
+      prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d].sort()
+    );
+  }
+
+  async function saveProfile() {
+    setSavingProfile(true);
+    setProfileMsg(null);
+    try {
+      const res = await fetch("/api/user/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ firstName, lastName, trainingDays }),
+      });
+      if (res.ok) {
+        setProfileMsg({ ok: true, text: "Profilo aggiornato" });
+        setEditingProfile(false);
+      } else {
+        setProfileMsg({ ok: false, text: "Errore nel salvataggio" });
+      }
+    } finally {
+      setSavingProfile(false);
+    }
+  }
 
   async function handleChangePassword(e: React.FormEvent) {
     e.preventDefault();
@@ -101,24 +151,138 @@ export function ProfileClient({
     }
   }
 
+  // Training week compliance
+  const plannedCount = trainingDays.length;
+  const trainedCount = trainingDays.filter((d) => trainedDaysThisWeek.includes(d)).length;
+
   return (
     <div className="px-4 py-6 space-y-5 pb-28">
 
       {/* ── Avatar + info ── */}
-      <div className="flex items-center gap-4 rounded-2xl border border-zinc-800 bg-zinc-900 p-4">
-        <div className="h-16 w-16 rounded-full bg-gradient-to-br from-orange-500 to-orange-700 flex items-center justify-center shrink-0 shadow-lg shadow-orange-900/30">
-          <span className="text-white text-xl font-bold">{initials}</span>
+      <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4">
+        <div className="flex items-center gap-4">
+          <div className="h-16 w-16 rounded-full bg-gradient-to-br from-orange-500 to-orange-700 flex items-center justify-center shrink-0 shadow-lg shadow-orange-900/30">
+            <span className="text-white text-xl font-bold">{initials}</span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-lg leading-tight truncate">{displayName}</p>
+            <p className="text-zinc-500 text-sm mt-0.5">
+              {role === "ADMIN" ? "👑 Admin" : "Atleta"} · @{username}
+            </p>
+            <p className="text-zinc-600 text-xs mt-1">
+              Membro da {formatMemberSince(memberSince)}
+            </p>
+          </div>
+          <button
+            onClick={() => { setEditingProfile(!editingProfile); setProfileMsg(null); }}
+            className="p-2 rounded-xl text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 transition-all shrink-0"
+          >
+            {editingProfile ? <X className="h-4 w-4" /> : <Pencil className="h-4 w-4" />}
+          </button>
         </div>
-        <div>
-          <p className="font-bold text-lg leading-tight">{username}</p>
-          <p className="text-zinc-500 text-sm mt-0.5">
-            {role === "ADMIN" ? "👑 Admin" : "Atleta"}
-          </p>
-          <p className="text-zinc-600 text-xs mt-1">
-            Membro da {formatMemberSince(memberSince)}
-          </p>
-        </div>
+
+        {/* Edit form */}
+        {editingProfile && (
+          <div className="mt-4 pt-4 border-t border-zinc-800 space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs text-zinc-400 font-medium">Nome</label>
+                <input
+                  type="text"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  placeholder="Mario"
+                  className="w-full rounded-xl bg-zinc-800 border border-zinc-700 px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs text-zinc-400 font-medium">Cognome</label>
+                <input
+                  type="text"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  placeholder="Rossi"
+                  className="w-full rounded-xl bg-zinc-800 border border-zinc-700 px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs text-zinc-400 font-medium">Giorni di allenamento</label>
+              <div className="flex gap-1.5 flex-wrap">
+                {DAYS.map((label, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => toggleDay(i)}
+                    className={cn(
+                      "h-9 w-10 rounded-xl text-xs font-bold transition-all",
+                      trainingDays.includes(i)
+                        ? "bg-orange-500 text-white shadow-sm shadow-orange-900/40"
+                        : "bg-zinc-800 border border-zinc-700 text-zinc-500"
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {profileMsg && (
+              <p className={`text-xs ${profileMsg.ok ? "text-green-400" : "text-red-400"}`}>
+                {profileMsg.text}
+              </p>
+            )}
+
+            <Button
+              size="sm"
+              className="w-full"
+              onClick={saveProfile}
+              disabled={savingProfile}
+            >
+              {savingProfile
+                ? <Loader2 className="h-4 w-4 animate-spin" />
+                : <><Check className="h-4 w-4 mr-1.5" />Salva profilo</>
+              }
+            </Button>
+          </div>
+        )}
       </div>
+
+      {/* ── Settimana corrente ── */}
+      {trainingDays.length > 0 && (
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold text-zinc-500 uppercase tracking-widest">Questa settimana</p>
+            <p className="text-xs font-bold text-orange-400">{trainedCount}/{plannedCount}</p>
+          </div>
+          <div className="flex gap-1.5">
+            {DAYS.map((label, i) => {
+              const planned = trainingDays.includes(i);
+              const done = trainedDaysThisWeek.includes(i);
+              return (
+                <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                  <div
+                    className={cn(
+                      "h-8 w-full rounded-lg flex items-center justify-center text-[10px] font-bold transition-all",
+                      done && planned ? "bg-green-500/20 text-green-400 border border-green-500/30" :
+                      done && !planned ? "bg-zinc-700/50 text-zinc-400" :
+                      planned ? "bg-orange-500/10 border border-orange-500/30 text-orange-400" :
+                      "bg-zinc-800/50 text-zinc-700"
+                    )}
+                  >
+                    {done ? <Check className="h-3.5 w-3.5" /> : label.slice(0, 1)}
+                  </div>
+                  <span className="text-[9px] text-zinc-600">{label}</span>
+                </div>
+              );
+            })}
+          </div>
+          {trainedCount >= plannedCount && plannedCount > 0 && (
+            <p className="text-xs text-green-400 text-center font-medium">🔥 Settimana completata!</p>
+          )}
+        </div>
+      )}
 
       {/* ── Stats ── */}
       <div className="grid grid-cols-3 gap-2">
@@ -162,13 +326,10 @@ export function ProfileClient({
                   <span
                     className={cn(
                       "h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0",
-                      i === 0
-                        ? "bg-yellow-500/20 text-yellow-400"
-                        : i === 1
-                        ? "bg-zinc-400/20 text-zinc-300"
-                        : i === 2
-                        ? "bg-orange-700/20 text-orange-600"
-                        : "bg-zinc-800 text-zinc-500"
+                      i === 0 ? "bg-yellow-500/20 text-yellow-400" :
+                      i === 1 ? "bg-zinc-400/20 text-zinc-300" :
+                      i === 2 ? "bg-orange-700/20 text-orange-600" :
+                      "bg-zinc-800 text-zinc-500"
                     )}
                   >
                     {i + 1}
