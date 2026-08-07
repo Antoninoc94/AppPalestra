@@ -940,7 +940,7 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
       </div>
 
       {/* Fixed finish button — above bottom nav */}
-      <div className="fixed bottom-16 inset-x-0 z-30">
+      <div className="fixed bottom-nav inset-x-0 z-30">
         <div className="max-w-lg mx-auto px-4 pt-2.5 pb-2.5 bg-zinc-950/95 backdrop-blur-sm border-t border-zinc-800/60">
           <Button
             className="w-full h-12 gap-2 font-semibold"
@@ -955,7 +955,7 @@ export function WorkoutClient({ programs, allExercises, userId }: Props & { user
 
       {/* No sets error toast */}
       {noSetsError && (
-        <div className="fixed bottom-32 inset-x-0 z-40 flex justify-center px-4">
+        <div className="fixed bottom-nav-2 inset-x-0 z-40 flex justify-center px-4">
           <div className="flex items-center gap-2 rounded-xl bg-zinc-800 border border-zinc-700 px-4 py-3 text-sm text-zinc-100 shadow-xl">
             <AlertTriangle className="h-4 w-4 text-orange-400 shrink-0" />
             Completa almeno una serie prima di terminare

@@ -38,6 +38,16 @@ body {
   padding-top: calc(3rem + env(safe-area-inset-top, 0px));
 }
 
+/* fixed elements that sit just above the bottom nav */
+.bottom-nav {
+  bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
+}
+
+/* fixed elements that sit above the bottom-nav layer (e.g. toasts) */
+.bottom-nav-2 {
+  bottom: calc(8rem + env(safe-area-inset-bottom, 0px));
+}
+
 /* smooth scrolling */
 * {
   scroll-behavior: smooth;
