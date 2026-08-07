@@ -229,9 +229,9 @@ export default async function HomePage() {
           <Link href="/workout">
             <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-orange-500 to-orange-700 p-5 shadow-lg shadow-orange-900/30">
               <div className="relative z-10">
-                <p className="text-orange-100/80 text-sm font-medium mb-1">Inizia ora</p>
+                <p className="text-white text-sm font-medium mb-1" style={{ opacity: 0.8 }}>Inizia ora</p>
                 <h2 className="text-white text-xl font-bold">Allenamento libero</h2>
-                <p className="text-orange-100/70 text-sm mt-1">
+                <p className="text-white text-sm mt-1" style={{ opacity: 0.7 }}>
                   {lastSession ? `Ultimo: ${formatDate(lastSession.date)}` : "Il tuo primo allenamento ti aspetta!"}
                 </p>
               </div>
