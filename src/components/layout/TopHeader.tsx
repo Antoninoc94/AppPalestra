@@ -17,15 +17,16 @@ export function TopHeader({ logoBase64, appName }: TopHeaderProps) {
           <Image
             src={logoBase64}
             alt={name}
-            width={28}
-            height={28}
-            className="rounded-md object-contain flex-shrink-0"
+            width={200}
+            height={36}
+            className="h-8 w-auto object-contain flex-shrink-0"
             unoptimized
           />
-        ) : null}
-        <span className="text-sm font-semibold text-zinc-100 tracking-tight truncate">
-          {name}
-        </span>
+        ) : (
+          <span className="text-sm font-semibold text-zinc-100 tracking-tight truncate">
+            {name}
+          </span>
+        )}
       </div>
     </header>
   );
