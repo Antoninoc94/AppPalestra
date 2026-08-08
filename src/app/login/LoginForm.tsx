@@ -10,16 +10,15 @@ import { Card, CardContent } from "@/components/ui/card";
 interface Props {
   appName: string;
   logoBase64: string | null;
+  defaultLogoSvg: string | null;
 }
 
-export function LoginForm({ appName, logoBase64 }: Props) {
+export function LoginForm({ appName, logoBase64, defaultLogoSvg }: Props) {
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-
-  const logoSrc = logoBase64 ?? "/logo.svg";
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -46,12 +45,22 @@ export function LoginForm({ appName, logoBase64 }: Props) {
     <div className="min-h-screen flex items-center justify-center px-4 bg-zinc-950">
       <div className="w-full max-w-sm space-y-8">
         <div className="text-center space-y-3">
-          <div className="flex justify-center">
-            <img
-              src={logoSrc}
-              alt={appName}
-              className="h-14 w-auto max-w-[240px] object-contain"
-            />
+          <div className="flex justify-center items-center">
+            {logoBase64 ? (
+              <img
+                src={logoBase64}
+                alt={appName}
+                className="h-14 w-auto max-w-[240px] object-contain"
+              />
+            ) : defaultLogoSvg ? (
+              <div
+                className="h-14 w-auto"
+                style={{ maxWidth: 260 }}
+                dangerouslySetInnerHTML={{ __html: defaultLogoSvg }}
+              />
+            ) : (
+              <span className="text-2xl font-bold">{appName}</span>
+            )}
           </div>
           <p className="text-zinc-400 text-sm">Accedi per continuare</p>
         </div>
