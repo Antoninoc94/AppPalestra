@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Dumbbell, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -18,6 +18,8 @@ export function LoginForm({ appName, logoBase64 }: Props) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const logoSrc = logoBase64 ?? "/logo.svg";
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -43,17 +45,14 @@ export function LoginForm({ appName, logoBase64 }: Props) {
   return (
     <div className="min-h-screen flex items-center justify-center px-4 bg-zinc-950">
       <div className="w-full max-w-sm space-y-8">
-        <div className="text-center space-y-2">
+        <div className="text-center space-y-3">
           <div className="flex justify-center">
-            <div className="rounded-2xl bg-orange-500/10 p-4">
-              {logoBase64 ? (
-                <img src={logoBase64} alt={appName} className="h-10 w-10 object-contain" />
-              ) : (
-                <Dumbbell className="h-10 w-10 text-orange-400" />
-              )}
-            </div>
+            <img
+              src={logoSrc}
+              alt={appName}
+              className="h-14 w-auto max-w-[240px] object-contain"
+            />
           </div>
-          <h1 className="text-2xl font-bold">{appName}</h1>
           <p className="text-zinc-400 text-sm">Accedi per continuare</p>
         </div>
 
